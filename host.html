@@ -522,6 +522,14 @@ function renderCharades(data) {
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
         latestData = data;
+        // AUTO-SEED QUESTION BANK (so editor always has rounds)
+        try {
+          if (roomId && (!data || !data.questionBank)) {
+            // write once; if rules block it, it'll just fail silently
+            saveQuestionBank(roomId, getBank());
+          }
+        } catch (e) {}
+
         // Always render core UI first (so a broken editor can't break gameplay)
         renderRoundSelect();
         updateVisibility(data);
