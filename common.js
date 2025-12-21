@@ -214,27 +214,8 @@ export async function setLiveQuestion(roomId, live) {
   await updateDoc(roomRef(roomId), {
     live,
     reveal: false,
-    "buzz.lockedBy": null,
-    "buzz.lockedAt": null
-  });
-}
-
-/**
- * Toggles reveal for the live question.
- */
-export async function setReveal(roomId, reveal) {
-  await updateDoc(roomRef(roomId), { reveal: !!reveal });
-}
-
-
-/**
- * Clears the stage and returns everyone to buzzer-only mode.
- */
-export async function clearStage(roomId) {
-  await updateDoc(roomRef(roomId), {
-    live: null,
-    reveal: false,
-    game: { round: null, index: 0, reveal: false },
+    game: { round: "questions", index: live?.index ?? 0, reveal: false },
+    // Clear any previous charades state so devices switch cleanly
     charades: {
       actorTeam: null,
       person: null,
@@ -245,4 +226,11 @@ export async function clearStage(roomId) {
     "buzz.lockedBy": null,
     "buzz.lockedAt": null
   });
+}
+
+/**
+ * Toggles reveal for the live question.
+ */
+export async function setReveal(roomId, reveal) {
+  await updateDoc(roomRef(roomId), { reveal: !!reveal });
 }
