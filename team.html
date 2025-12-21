@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quizmas Team</title>
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+  <div class="wrap">
+    <h1>Team Buzzer</h1>
+
+    <div class="card">
+      <div class="row">
+        <div class="col">
+          <label>Room code</label><br/>
+          <input id="room" placeholder="e.g. quizmas" />
+        </div>
+        <div class="col">
+          <label>Team name</label><br/>
+          <input id="team" placeholder="e.g. The Sprouts" />
+        </div>
+      </div>
+      <button id="join">Join</button>
+      <p class="small" id="status"></p>
+    </div>
+
+    <div class="card" id="live" style="display:none;">
+      <div class="big" id="state">Ready</div>
+      <p class="small" id="info"></p>
+      <button class="buzz" id="buzzBtn">BUZZ!</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { ensureRoom, listenRoom, buzz } from "./common.js";
+    const $ = (id) => document.getElementById(id);
+
+    let roomId = null;
+    let teamName = null;
+    let unsub = null;
+
+    $("join").onclick = async () => {
+      roomId = $("room").value.trim();
+      teamName = $("team").value.trim();
+      if (!roomId || !teamName) { $("status").textContent = "Enter room + team name."; return; }
+
+      $("status").textContent = "Joining…";
+      await ensureRoom(roomId);
+
+      $("live").style.display = "block";
+      $("status").textContent = `Joined room: ${roomId}`;
+
+      if (unsub) unsub();
+      unsub = listenRoom(roomId, (data) => {
+        const lockedBy = data?.buzz?.lockedBy ?? null;
+
+        if (!lockedBy) {
+          $("state").textContent = "Ready";
+          $("info").textContent = "Buzz is open.";
+          $("buzzBtn").disabled = false;
+          $("buzzBtn").textContent = "BUZZ!";
+          return;
+        }
+
+        $("buzzBtn").disabled = true;
+        if (lockedBy === teamName) {
+          $("state").textContent = "YOU WON ✅";
+          $("info").textContent = "Wait for host to reset.";
+        } else {
+          $("state").textContent = "TOO LATE ⛔";
+          $("info").textContent = `Locked by: ${lockedBy}`;
+        }
+        $("buzzBtn").textContent = "LOCKED";
+      });
+    };
+
+    $("buzzBtn").onclick = async () => {
+      if (!roomId || !teamName) return;
+      await buzz(roomId, teamName);
+    };
+  </script>
+</body>
+</html>
