@@ -21,11 +21,12 @@ function roomRef(roomId) {
 
 /**
  * Creates the room document if it doesn't exist.
- * Includes buzzer + scoring state.
+ * Includes buzzer + scoring + (now) game/charades state.
  */
 export async function ensureRoom(roomId) {
   const ref = roomRef(roomId);
   const snap = await getDoc(ref);
+
   if (!snap.exists()) {
     await setDoc(ref, {
       createdAt: serverTimestamp(),
@@ -33,10 +34,44 @@ export async function ensureRoom(roomId) {
       // Buzzer state (first buzz wins)
       buzz: { lockedBy: null, lockedAt: null },
 
-      // Scoring state (new)
-      teams: [],   // ["Team A", "Team B"]
-      scores: {}   // { "Team A": 0, "Team B": 0 }
+      // Scoring state
+      teams: [],
+      scores: {},
+
+      // Game state (new)
+      game: {
+        round: null,     // "charades" | later: "images" | "music" | "final"
+        index: 0,
+        reveal: false
+      },
+
+      // Charades state (new)
+      charades: {
+        actorTeam: null,
+        person: null,
+        endsAt: null,      // ms epoch
+        running: false,
+        revealed: false
+      }
     });
+    return;
+  }
+
+  // If the room already existed (from earlier), ensure new fields exist
+  const data = snap.data() || {};
+  const patch = {};
+
+  if (!data.teams) patch.teams = [];
+  if (!data.scores) patch.scores = {};
+  if (!data.game) {
+    patch.game = { round: null, index: 0, reveal: false };
+  }
+  if (!data.charades) {
+    patch.charades = { actorTeam: null, person: null, endsAt: null, running: false, revealed: false };
+  }
+
+  if (Object.keys(patch).length) {
+    await updateDoc(ref, patch);
   }
 }
 
@@ -125,3 +160,42 @@ export async function changeScore(roomId, teamName, delta) {
   });
 }
 
+/**
+ * CHARADES: Start a round.
+ */
+export async function startCharades(roomId, actorTeam, person, seconds) {
+  const endsAt = Date.now() + (Number(seconds) * 1000);
+
+  await updateDoc(roomRef(roomId), {
+    game: { round: "charades", index: Date.now(), reveal: false },
+    charades: {
+      actorTeam,
+      person,
+      endsAt,
+      running: true,
+      revealed: false
+    },
+    // clear buzzer for this round
+    "buzz.lockedBy": null,
+    "buzz.lockedAt": null
+  });
+}
+
+/**
+ * CHARADES: Stop the timer early (doesn't reveal).
+ */
+export async function stopCharades(roomId) {
+  await updateDoc(roomRef(roomId), {
+    "charades.running": false
+  });
+}
+
+/**
+ * CHARADES: Reveal the person name on host (and stop timer).
+ */
+export async function revealCharades(roomId) {
+  await updateDoc(roomRef(roomId), {
+    "charades.revealed": true,
+    "charades.running": false
+  });
+}
