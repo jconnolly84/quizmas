@@ -28,19 +28,65 @@
       <p class="small">First buzz:</p>
       <div class="big" id="winner">—</div>
       <p class="small" id="lockInfo"></p>
+
+      <hr/>
+
+      <h2>Scores</h2>
+      <div id="scoreboard"></div>
+      <p class="small">Teams appear here automatically when they join.</p>
     </div>
   </div>
 
   <script type="module">
-    import { ensureRoom, listenRoom, resetBuzz } from "./common.js";
+    import { ensureRoom, listenRoom, resetBuzz, changeScore } from "./common.js";
     const $ = (id) => document.getElementById(id);
 
     let roomId = null;
     let unsub = null;
 
+    function renderScores(teams = [], scores = {}) {
+      const box = $("scoreboard");
+      box.innerHTML = "";
+
+      if (!teams.length) {
+        box.innerHTML = "<p class='small'>No teams yet.</p>";
+        return;
+      }
+
+      teams.forEach((team) => {
+        const score = Number(scores[team] ?? 0);
+
+        const row = document.createElement("div");
+        row.className = "row";
+        row.style.alignItems = "center";
+
+        row.innerHTML = `
+          <div class="col"><strong>${team}</strong> <span class="small">(${score})</span></div>
+          <div class="col" style="display:flex; gap:8px; justify-content:flex-end;">
+            <button data-d="-2">-2</button>
+            <button data-d="-1">-1</button>
+            <button data-d="1">+1</button>
+            <button data-d="2">+2</button>
+          </div>
+        `;
+
+        row.querySelectorAll("button").forEach((btn) => {
+          btn.onclick = async () => {
+            const delta = Number(btn.getAttribute("data-d"));
+            await changeScore(roomId, team, delta);
+          };
+        });
+
+        box.appendChild(row);
+      });
+    }
+
     $("open").onclick = async () => {
       roomId = $("room").value.trim();
-      if (!roomId) { $("status").textContent = "Enter a room code."; return; }
+      if (!roomId) {
+        $("status").textContent = "Enter a room code.";
+        return;
+      }
 
       $("status").textContent = "Opening room…";
       await ensureRoom(roomId);
@@ -52,7 +98,11 @@
       unsub = listenRoom(roomId, (data) => {
         const lockedBy = data?.buzz?.lockedBy ?? null;
         $("winner").textContent = lockedBy ? lockedBy : "—";
-        $("lockInfo").textContent = lockedBy ? "Buzz is locked. Reset to continue." : "Buzz is open.";
+        $("lockInfo").textContent = lockedBy
+          ? "Buzz is locked. Reset to continue."
+          : "Buzz is open.";
+
+        renderScores(data?.teams || [], data?.scores || {});
       });
     };
 
