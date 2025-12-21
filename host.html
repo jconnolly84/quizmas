@@ -50,6 +50,7 @@
         <div class="big" id="livePrompt">—</div>
         <div id="liveOptions" class="small" style="margin-top:8px;"></div>
         <div id="liveAnswer" class="small" style="margin-top:10px; display:none;"></div>
+          <div id="awardTarget" class="small" style="margin-top:8px;"></div>
       </div>
 
       <div class="row" style="margin-top:10px;">
@@ -62,6 +63,9 @@
           <button id="nextQ">Next</button>
           <button id="revealQ">Reveal</button>
           <button id="hideQ">Hide</button>
+          <button id="awardQPlus1">+1 Correct</button>
+          <button id="awardQMinus1">-1 Wrong</button>
+          <button id="awardQPlus2">+2</button>
         </div>
       </div>
 
@@ -345,6 +349,10 @@ function renderCharades(data) {
 
         const lockedBy = data?.buzz?.lockedBy ?? null;
         $("winner").textContent = lockedBy ? lockedBy : "—";
+        const awardEl = document.getElementById("awardTarget");
+        if (awardEl) {
+          awardEl.textContent = lockedBy ? `Award points to: ${lockedBy}` : "Award points to: (no buzz yet)";
+        }
         $("lockInfo").textContent = lockedBy
           ? "Buzz is locked. Reset to continue."
           : "Buzz is open.";
