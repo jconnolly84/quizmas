@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quizmas Host</title>
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+  <div class="wrap">
+    <h1>Host Console</h1>
+
+    <div class="card">
+      <div class="row">
+        <div class="col">
+          <label>Room code</label><br/>
+          <input id="room" placeholder="e.g. quizmas" />
+        </div>
+        <div class="col">
+          <button id="open">Open / Create Room</button>
+          <button id="reset">Reset Buzz</button>
+        </div>
+      </div>
+      <p class="small" id="status"></p>
+    </div>
+
+    <div class="card" id="live" style="display:none;">
+      <p class="small">First buzz:</p>
+      <div class="big" id="winner">—</div>
+      <p class="small" id="lockInfo"></p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { ensureRoom, listenRoom, resetBuzz } from "./common.js";
+    const $ = (id) => document.getElementById(id);
+
+    let roomId = null;
+    let unsub = null;
+
+    $("open").onclick = async () => {
+      roomId = $("room").value.trim();
+      if (!roomId) { $("status").textContent = "Enter a room code."; return; }
+
+      $("status").textContent = "Opening room…";
+      await ensureRoom(roomId);
+
+      $("live").style.display = "block";
+      $("status").textContent = `Room ready: ${roomId}`;
+
+      if (unsub) unsub();
+      unsub = listenRoom(roomId, (data) => {
+        const lockedBy = data?.buzz?.lockedBy ?? null;
+        $("winner").textContent = lockedBy ? lockedBy : "—";
+        $("lockInfo").textContent = lockedBy ? "Buzz is locked. Reset to continue." : "Buzz is open.";
+      });
+    };
+
+    $("reset").onclick = async () => {
+      if (!roomId) return;
+      await resetBuzz(roomId);
+    };
+  </script>
+</body>
+</html>
