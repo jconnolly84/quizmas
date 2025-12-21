@@ -20,6 +20,7 @@
         <div class="col">
           <button id="open">Open / Create Room</button>
           <button id="reset">Reset Buzz</button>
+          <button id="clearStageBtn">Back to Buzzer</button>
         </div>
       </div>
       <p class="small" id="status"></p>
@@ -116,6 +117,7 @@
   <script type="module">
     import {
       ensureRoom,
+      clearStage,
       listenRoom,
       resetBuzz,
       changeScore,
@@ -393,6 +395,11 @@ function renderCharades(data) {
           }
         }
       });
+    };
+
+    $("clearStageBtn").onclick = async () => {
+      if (!roomId) return;
+      await clearStage(roomId);
     };
 
     $("reset").onclick = async () => {

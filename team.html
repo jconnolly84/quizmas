@@ -91,6 +91,13 @@
 
 
         const liveQ = data?.live || null;
+        const roundCleared = !data?.game?.round && !liveQ;
+        if (roundCleared) {
+          $("teamMeta").textContent = "Waiting for host…";
+          $("teamPrompt").textContent = "—";
+          $("teamOptions").textContent = "";
+          $("teamReveal").style.display = "none";
+        }
         const reveal = !!data?.reveal;
 
         if (liveQ) {

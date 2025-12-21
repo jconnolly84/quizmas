@@ -225,3 +225,24 @@ export async function setLiveQuestion(roomId, live) {
 export async function setReveal(roomId, reveal) {
   await updateDoc(roomRef(roomId), { reveal: !!reveal });
 }
+
+
+/**
+ * Clears the stage and returns everyone to buzzer-only mode.
+ */
+export async function clearStage(roomId) {
+  await updateDoc(roomRef(roomId), {
+    live: null,
+    reveal: false,
+    game: { round: null, index: 0, reveal: false },
+    charades: {
+      actorTeam: null,
+      person: null,
+      endsAt: null,
+      running: false,
+      revealed: false
+    },
+    "buzz.lockedBy": null,
+    "buzz.lockedAt": null
+  });
+}
