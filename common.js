@@ -46,6 +46,9 @@ export async function ensureRoom(roomId) {
       },
 
       // Charades state (new)
+      live: null,
+      reveal: false,
+
       charades: {
         actorTeam: null,
         person: null,
@@ -168,7 +171,10 @@ export async function startCharades(roomId, actorTeam, person, seconds) {
 
   await updateDoc(roomRef(roomId), {
     game: { round: "charades", index: Date.now(), reveal: false },
-    charades: {
+    live: null,
+      reveal: false,
+
+      charades: {
       actorTeam,
       person,
       endsAt,
@@ -198,4 +204,24 @@ export async function revealCharades(roomId) {
     "charades.revealed": true,
     "charades.running": false
   });
+}
+
+
+/**
+ * Sets the current live question (host controlled).
+ */
+export async function setLiveQuestion(roomId, live) {
+  await updateDoc(roomRef(roomId), {
+    live,
+    reveal: false,
+    "buzz.lockedBy": null,
+    "buzz.lockedAt": null
+  });
+}
+
+/**
+ * Toggles reveal for the live question.
+ */
+export async function setReveal(roomId, reveal) {
+  await updateDoc(roomRef(roomId), { reveal: !!reveal });
 }

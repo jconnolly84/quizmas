@@ -35,7 +35,27 @@
       <div id="scoreboard"></div>
       <p class="small">Teams appear here automatically when they join.</p>
 
+      
       <hr/>
+      <h2>Live Question</h2>
+      <div class="row">
+        <div class="col">
+          <label>Round</label><br/>
+          <select id="roundSelect"></select>
+        </div>
+        <div class="col" style="display:flex; gap:8px; justify-content:flex-end;">
+          <button id="prevQ">Prev</button>
+          <button id="nextQ">Next</button>
+          <button id="revealQ">Reveal</button>
+          <button id="hideQ">Hide</button>
+        </div>
+      </div>
+      <div class="card" style="background:#0f1627;">
+        <div class="small" id="liveMeta">—</div>
+        <div class="big" id="livePrompt">—</div>
+        <div id="liveOptions" class="small" style="margin-top:8px;"></div>
+        <div id="liveAnswer" class="small" style="margin-top:10px; display:none;"></div>
+      </div>
 
       <h2>Charades (Sherards)</h2>
       <div class="row">
@@ -85,8 +105,11 @@
       changeScore,
       startCharades,
       stopCharades,
-      revealCharades
+      revealCharades,
+      setLiveQuestion,
+      setReveal
     } from "./common.js";
+    import { QUIZ } from "./questions.js";
 
     const $ = (id) => document.getElementById(id);
 
@@ -95,6 +118,43 @@
 
     // latest snapshot state (fixes Stop/Reveal UI issues)
     let latestData = null;
+
+    let selectedRoundId = "quickfire";
+    let questionIndex = 0;
+
+    function getRound(id) {
+      return QUIZ.rounds.find(r => r.id === id);
+    }
+
+    function renderRoundSelect() {
+      const sel = $("roundSelect");
+      sel.innerHTML = QUIZ.rounds.map(r => `<option value="${r.id}">${r.name}</option>`).join("");
+      sel.value = selectedRoundId;
+    }
+
+    async function pushLiveQuestion() {
+      const round = getRound(selectedRoundId);
+      if (!round) return;
+
+      const qObj = round.questions[questionIndex % round.questions.length];
+      const live = {
+        roundId: round.id,
+        roundType: round.type,
+        index: questionIndex,
+        prompt: qObj.q
+      };
+
+      if (round.type === "qa") {
+        live.answer = qObj.a;
+      } else if (round.type === "mcq") {
+        live.options = qObj.options;
+        live.correctIndex = qObj.correctIndex;
+        live.answer = qObj.options[qObj.correctIndex];
+      }
+
+      await setLiveQuestion(roomId, live);
+    }
+
 
     // You can replace these later with your real charades list
     const CHARADES_NAMES = [
@@ -239,6 +299,7 @@
       await ensureRoom(roomId);
 
       $("live").style.display = "block";
+      renderRoundSelect();
       $("status").textContent = `Room ready: ${roomId}`;
 
       if (unsub) unsub();
@@ -253,6 +314,36 @@
 
         renderScores(data?.teams || [], data?.scores || {});
         renderCharades(data);
+
+
+        const liveQ = data?.live || null;
+        const reveal = !!data?.reveal;
+
+        if (!liveQ) {
+          $("liveMeta").textContent = "No live question";
+          $("livePrompt").textContent = "—";
+          $("liveOptions").textContent = "";
+          $("liveAnswer").style.display = "none";
+        } else {
+          $("liveMeta").textContent = `${liveQ.roundId.toUpperCase()} • Q${(liveQ.index ?? 0) + 1}`;
+          $("livePrompt").textContent = liveQ.prompt || "—";
+
+          if (liveQ.roundType === "mcq" && Array.isArray(liveQ.options)) {
+            $("liveOptions").innerHTML = liveQ.options
+              .map((o,i)=>`<div><strong>${String.fromCharCode(65+i)}.</strong> ${o}</div>`)
+              .join("");
+          } else {
+            $("liveOptions").textContent = "";
+          }
+
+          if (reveal) {
+            $("liveAnswer").style.display = "block";
+            $("liveAnswer").textContent = `Answer: ${liveQ.answer ?? "—"}`;
+          } else {
+            $("liveAnswer").style.display = "none";
+          }
+        }
+
 
         // Helpful default: when charades is active, set award dropdown to acting team
         if (data?.game?.round === "charades" && data?.charades?.actorTeam) {
@@ -296,6 +387,33 @@
     $("revealCharadesBtn").onclick = async () => {
       if (!roomId) return;
       await revealCharades(roomId);
+    };
+
+    
+    $("roundSelect").onchange = async () => {
+      selectedRoundId = $("roundSelect").value;
+      questionIndex = 0;
+      await pushLiveQuestion();
+    };
+
+    $("nextQ").onclick = async () => {
+      questionIndex++;
+      await pushLiveQuestion();
+    };
+
+    $("prevQ").onclick = async () => {
+      questionIndex = Math.max(0, questionIndex - 1);
+      await pushLiveQuestion();
+    };
+
+    $("revealQ").onclick = async () => {
+      if (!roomId) return;
+      await setReveal(roomId, true);
+    };
+
+    $("hideQ").onclick = async () => {
+      if (!roomId) return;
+      await setReveal(roomId, false);
     };
 
     // Award points buttons

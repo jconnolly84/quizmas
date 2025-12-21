@@ -7,8 +7,8 @@ export const QUIZ = {
       type: "qa",
       questions: [
         { q: "What is the capital of Scotland?", a: "Edinburgh" },
-        { q: "How many colours are there on the Union Jack?", a: "Three (red, white, blue)" },
-        { q: "Which planet is known as the Red Planet?", a: "Mars" }
+        { q: "Which planet is known as the Red Planet?", a: "Mars" },
+        { q: "How many colours are there on the Union Jack?", a: "Three" }
       ]
     },
     {
@@ -22,14 +22,9 @@ export const QUIZ = {
           correctIndex: 2
         },
         {
-          q: "What is the largest ocean on Earth?",
+          q: "Which ocean is the largest on Earth?",
           options: ["Atlantic", "Indian", "Arctic", "Pacific"],
           correctIndex: 3
-        },
-        {
-          q: "Which animal is on the WWF logo?",
-          options: ["Tiger", "Panda", "Elephant", "Koala"],
-          correctIndex: 1
         }
       ]
     }
