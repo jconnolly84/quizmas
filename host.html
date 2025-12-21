@@ -20,7 +20,6 @@
         <div class="col">
           <button id="open">Open / Create Room</button>
           <button id="reset">Reset Buzz</button>
-          <button id="clearStageBtn">Back to Buzzer</button>
         </div>
       </div>
       <p class="small" id="status"></p>
@@ -52,22 +51,8 @@
         <div id="liveOptions" class="small" style="margin-top:8px;"></div>
         <div id="liveAnswer" class="small" style="margin-top:10px; display:none;"></div>
       </div>
-          <details id="liveControlsDetails" open style="margin-top:10px;">
-            <summary><span class="small">Controls</span></summary>
-            <div class="row">
-        <div class="col">
-          <label>Round</label><br/>
-          <select id="roundSelect"></select>
-        </div>
-        <div class="col" style="display:flex; gap:8px; justify-content:flex-end;">
-          <button id="prevQ">Prev</button>
-          <button id="nextQ">Next</button>
-          <button id="revealQ">Reveal</button>
-          <button id="hideQ">Hide</button>
-        </div>
-      </div>
-          </details>
-        </div>
+        \1
+</div>
       </details>
 
             <details id="charadesDetails">
@@ -117,7 +102,6 @@
   <script type="module">
     import {
       ensureRoom,
-      clearStage,
       listenRoom,
       resetBuzz,
       changeScore,
@@ -279,16 +263,13 @@
       const charadesDetails = document.getElementById("charadesDetails");
       const scoresDetails = document.getElementById("scoresDetails");
       const buzzSection = document.getElementById("sectionBuzz");
-      const liveControls = document.getElementById("liveControlsDetails");
-
-      const roundActive = showCharades || showLive;
+const roundActive = showCharades || showLive;
 
       if (liveDetails) liveDetails.open = showLive;
       if (charadesDetails) charadesDetails.open = showCharades;
       if (scoresDetails) scoresDetails.open = !roundActive;
 
       if (buzzSection) buzzSection.classList.toggle("hidden", roundActive);
-      if (liveControls) liveControls.open = !roundActive;
     }
 
 function renderCharades(data) {
@@ -395,11 +376,6 @@ function renderCharades(data) {
           }
         }
       });
-    };
-
-    $("clearStageBtn").onclick = async () => {
-      if (!roomId) return;
-      await clearStage(roomId);
     };
 
     $("reset").onclick = async () => {
