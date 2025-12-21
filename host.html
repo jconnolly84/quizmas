@@ -461,6 +461,25 @@ function renderCharades(data) {
       await setReveal(roomId, false);
     };
 
+    function getBuzzWinner() {
+      return latestData?.buzz?.lockedBy || null;
+    }
+
+    async function awardToWinner(delta) {
+      if (!roomId) return;
+      const winner = getBuzzWinner();
+      if (!winner) {
+        alert("No team has buzzed in yet.");
+        return;
+      }
+      await changeScore(roomId, winner, delta);
+    }
+
+    $("awardQPlus1").onclick = async () => awardToWinner(1);
+    $("awardQMinus1").onclick = async () => awardToWinner(-1);
+    $("awardQPlus2").onclick = async () => awardToWinner(2);
+
+
     // Award points buttons
     $("awardMinus1").onclick = async () => {
       if (!roomId) return;
