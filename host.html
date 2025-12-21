@@ -79,6 +79,7 @@
             <div class="col">
               <label>Edit round</label><br/>
               <select id="editRoundSelect"></select>
+              <div id="editorStatus" class="small" style="margin-top:6px; opacity:.85;"></div>
             </div>
             <div class="col" style="display:flex; gap:8px; justify-content:flex-end; align-items:flex-end;">
               <button id="addQA">Add Q&A</button>
@@ -194,6 +195,171 @@
         index: questionIndex,
         prompt: qObj.q
       }
+
+    // ---------- Question editor (host only) ----------
+    let editRoundId = null;
+
+    function setEditorStatus(msg) {
+      const el = document.getElementById("editorStatus");
+      if (el) el.textContent = msg || "";
+    }
+
+    function bankClone() {
+      return JSON.parse(JSON.stringify(getBank() || { rounds: [] }));
+    }
+
+    async function setBank(bank) {
+      if (!roomId) return;
+      await saveQuestionBank(roomId, bank);
+    }
+
+    function renderEditorRoundSelect() {
+      const sel = document.getElementById("editRoundSelect");
+      if (!sel) return;
+
+      const rounds = getRounds();
+      sel.innerHTML = rounds.map(r => `<option value="${r.id}">${r.name} (${r.type})</option>`).join("");
+      if (!rounds.length) {
+        setEditorStatus("No rounds found yet. Try a new room code.");
+        return;
+      }
+      if (!editRoundId) editRoundId = rounds[0].id;
+      if (!rounds.some(r => r.id === editRoundId)) editRoundId = rounds[0].id;
+      sel.value = editRoundId;
+
+      setEditorStatus(`Rounds loaded: ${rounds.length} (${latestData?.questionBank ? "Firestore" : "Default"})`);
+    }
+
+    function renderEditorList() {
+      const list = document.getElementById("editorList");
+      if (!list) return;
+      list.innerHTML = "";
+
+      const round = getRounds().find(r => r.id === editRoundId);
+      if (!round) {
+        list.innerHTML = "<p class='small'>No round selected.</p>";
+        return;
+      }
+
+      const qs = Array.isArray(round.questions) ? round.questions : [];
+      if (!qs.length) list.innerHTML = "<p class='small'>No questions in this round yet.</p>";
+
+      qs.forEach((q, idx) => {
+        const wrap = document.createElement("div");
+        wrap.className = "card";
+        wrap.style.marginBottom = "10px";
+
+        const head = document.createElement("div");
+        head.className = "row";
+        head.innerHTML = `
+          <div class="col"><strong>Q${idx + 1}</strong> <span class="small">(${round.type})</span></div>
+          <div class="col" style="display:flex; justify-content:flex-end;">
+            <button data-del="${idx}">Delete</button>
+          </div>
+        `;
+        wrap.appendChild(head);
+
+        const qBox = document.createElement("textarea");
+        qBox.style.width = "100%";
+        qBox.style.minHeight = "60px";
+        qBox.value = q.q || "";
+        qBox.oninput = () => { q.q = qBox.value; };
+        wrap.appendChild(qBox);
+
+        if (round.type === "qa") {
+          const aBox = document.createElement("textarea");
+          aBox.style.width = "100%";
+          aBox.style.minHeight = "48px";
+          aBox.style.marginTop = "8px";
+          aBox.placeholder = "Answer";
+          aBox.value = q.a || "";
+          aBox.oninput = () => { q.a = aBox.value; };
+          wrap.appendChild(aBox);
+        }
+
+        if (round.type === "mcq") {
+          q.options = Array.isArray(q.options) ? q.options : ["", "", "", ""];
+          const optWrap = document.createElement("div");
+          optWrap.style.marginTop = "8px";
+
+          q.options.forEach((opt, i) => {
+            const row = document.createElement("div");
+            row.className = "row";
+            row.style.alignItems = "center";
+            row.innerHTML = `
+              <div class="col" style="max-width:40px;"><strong>${String.fromCharCode(65+i)}.</strong></div>
+              <div class="col"><input style="width:100%;" /></div>
+              <div class="col" style="max-width:180px; text-align:right;">
+                <label class="small"><input type="radio" name="correct_${idx}" value="${i}"> correct</label>
+              </div>
+            `;
+            optWrap.appendChild(row);
+
+            const inp = row.querySelector("input:not([type=radio])");
+            inp.value = opt || "";
+            inp.oninput = () => { q.options[i] = inp.value; };
+
+            const radio = row.querySelector("input[type='radio']");
+            radio.checked = Number(q.correctIndex ?? 0) === i;
+            radio.onchange = () => { q.correctIndex = i; };
+          });
+
+          wrap.appendChild(optWrap);
+        }
+
+        list.appendChild(wrap);
+      });
+
+      list.querySelectorAll("button[data-del]").forEach(btn => {
+        btn.onclick = async () => {
+          const delIdx = Number(btn.getAttribute("data-del"));
+          const bank = bankClone();
+          const r = bank.rounds.find(r => r.id === editRoundId);
+          if (!r || !Array.isArray(r.questions)) return;
+          r.questions.splice(delIdx, 1);
+          await setBank(bank);
+        };
+      });
+    }
+
+    function wireEditor() {
+      const sel = document.getElementById("editRoundSelect");
+      if (sel) sel.onchange = () => { editRoundId = sel.value; renderEditorList(); };
+
+      const addQA = document.getElementById("addQA");
+      if (addQA) addQA.onclick = async () => {
+        const bank = bankClone();
+        const r = bank.rounds.find(r => r.id === editRoundId);
+        if (!r) return;
+        if (r.type !== "qa") return alert("Select a Q&A round first.");
+        r.questions = Array.isArray(r.questions) ? r.questions : [];
+        r.questions.push({ q: "New question…", a: "Answer…" });
+        await setBank(bank);
+      };
+
+      const addMCQ = document.getElementById("addMCQ");
+      if (addMCQ) addMCQ.onclick = async () => {
+        const bank = bankClone();
+        const r = bank.rounds.find(r => r.id === editRoundId);
+        if (!r) return;
+        if (r.type !== "mcq") return alert("Select an MCQ round first.");
+        r.questions = Array.isArray(r.questions) ? r.questions : [];
+        r.questions.push({ q: "New MCQ…", options: ["A", "B", "C", "D"], correctIndex: 0 });
+        await setBank(bank);
+      };
+
+      const saveBtn = document.getElementById("saveBank");
+      if (saveBtn) saveBtn.onclick = async () => {
+        await setBank(bankClone());
+        alert("Saved.");
+      };
+    }
+    wireEditor();
+
+    function safeRenderEditor() {
+      try { renderEditorRoundSelect(); renderEditorList(); } catch (e) { console.warn(e); }
+    }
+
 
     // ---------- Question editor (host only) ----------
     let editRoundId = null;
@@ -514,6 +680,7 @@ function renderCharades(data) {
       $("status").textContent = "Opening room…";
       await ensureRoom(roomId);
       await ensureQuestionBank(roomId, QUIZ);
+      await ensureQuestionBank(roomId, QUIZ);
 
       $("live").style.display = "block";
       renderRoundSelect();
@@ -522,14 +689,7 @@ function renderCharades(data) {
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
         latestData = data;
-        // AUTO-SEED QUESTION BANK (so editor always has rounds)
-        try {
-          if (roomId && (!data || !data.questionBank)) {
-            // write once; if rules block it, it'll just fail silently
-            saveQuestionBank(roomId, getBank());
-          }
-        } catch (e) {}
-
+        safeRenderEditor();
         // Always render core UI first (so a broken editor can't break gameplay)
         renderRoundSelect();
         updateVisibility(data);
@@ -698,6 +858,12 @@ function renderCharades(data) {
       if (!team) return;
       await changeScore(roomId, team, 2);
     };
-  </script>
+  
+    // Re-render editor when opened
+    try {
+      const ed = document.getElementById("editorDetails");
+      if (ed) ed.addEventListener("toggle", () => { if (ed.open) safeRenderEditor(); });
+    } catch (e) {}
+</script>
 </body>
 </html>
