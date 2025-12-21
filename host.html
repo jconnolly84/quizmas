@@ -150,9 +150,17 @@
         return;
       }
 
-      // Populate dropdowns (actor + award)
+      // ✅ Preserve current selections (prevents dropdown resetting to first team)
+      const prevActor = $("actorTeam").value;
+      const prevAward = $("awardTeam").value;
+
+      // Rebuild dropdowns
       $("actorTeam").innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join("");
       $("awardTeam").innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join("");
+
+      // ✅ Restore previous selection if still valid
+      if (prevActor && teams.includes(prevActor)) $("actorTeam").value = prevActor;
+      if (prevAward && teams.includes(prevAward)) $("awardTeam").value = prevAward;
 
       teams.forEach((team) => {
         const score = Number(scores[team] ?? 0);
