@@ -72,7 +72,7 @@
               </div>
       </details>
 
-      <details id="charadesDetails" open>
+      <details id="charadesDetails">
         <summary><h2 style="display:inline">Charades (Sherards)</h2></summary>
         <div id="sectionCharades" style="margin-top:10px;">
       <div class="row">
@@ -286,8 +286,8 @@
       const roundActive = showCharades || showLive;
 
       // Open the active section, collapse the rest (but never hide)
-      if (liveDetails) liveDetails.open = showLive || !roundActive;
-      if (charadesDetails) charadesDetails.open = showCharades || !roundActive;
+            if (liveDetails) liveDetails.open = showLive;
+            if (charadesDetails) charadesDetails.open = showCharades;
 
       // Keep scores available but collapsed during play
       if (scoresDetails) scoresDetails.open = !roundActive;
