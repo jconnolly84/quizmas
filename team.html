@@ -57,17 +57,41 @@
 
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
-        const lockedBy = data?.buzz?.lockedBy ?? null;
+        const round = data?.game?.round ?? null;
 
+        // Default buzz UI (works for all rounds)
+        const lockedBy = data?.buzz?.lockedBy ?? null;
         if (!lockedBy) {
-          $("state").textContent = "Ready";
-          $("info").textContent = "Buzz is open.";
           $("buzzBtn").disabled = false;
           $("buzzBtn").textContent = "BUZZ!";
+        } else {
+          $("buzzBtn").disabled = true;
+          $("buzzBtn").textContent = "LOCKED";
+        }
+
+        // Charades behaviour
+        if (round === "charades") {
+          const ch = data?.charades ?? {};
+          if (ch.actorTeam === teamName) {
+            $("state").textContent = "ACT IT OUT 🎭";
+            $("info").textContent = ch.person ? `Your person: ${ch.person}` : "Waiting for host…";
+            $("buzzBtn").disabled = true; // acting team shouldn't buzz
+            $("buzzBtn").textContent = "ACTING";
+          } else {
+            $("state").textContent = "GUESS!";
+            $("info").textContent = ch.actorTeam ? `Acting team: ${ch.actorTeam}` : "Waiting for host…";
+            // guessing teams can still buzz (optional). Keep enabled if buzz is open.
+          }
           return;
         }
 
-        $("buzzBtn").disabled = true;
+        // Normal buzzer feedback (non-charades)
+        if (!lockedBy) {
+          $("state").textContent = "Ready";
+          $("info").textContent = "Buzz is open.";
+          return;
+        }
+
         if (lockedBy === teamName) {
           $("state").textContent = "YOU WON ✅";
           $("info").textContent = "Wait for host to reset.";
@@ -75,7 +99,6 @@
           $("state").textContent = "TOO LATE ⛔";
           $("info").textContent = `Locked by: ${lockedBy}`;
         }
-        $("buzzBtn").textContent = "LOCKED";
       });
     };
 
