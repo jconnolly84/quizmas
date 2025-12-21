@@ -34,15 +34,54 @@
       <h2>Scores</h2>
       <div id="scoreboard"></div>
       <p class="small">Teams appear here automatically when they join.</p>
+
+      <hr/>
+
+      <h2>Charades (Sherards)</h2>
+      <div class="row">
+        <div class="col">
+          <label>Acting team</label><br/>
+          <select id="actorTeam"></select>
+        </div>
+        <div class="col">
+          <label>Seconds</label><br/>
+          <input id="charadesSeconds" type="number" value="60" min="10" />
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="startCharadesBtn">Start</button>
+        <button id="stopCharadesBtn">Stop</button>
+        <button id="revealCharadesBtn">Reveal</button>
+      </div>
+
+      <p class="small" id="charadesInfo"></p>
+      <div class="big" id="charadesTimer" style="display:none;">60</div>
+      <p class="small" id="charadesReveal" style="display:none;"></p>
     </div>
   </div>
 
   <script type="module">
-    import { ensureRoom, listenRoom, resetBuzz, changeScore } from "./common.js";
+    import { ensureRoom, listenRoom, resetBuzz, changeScore, startCharades, stopCharades, revealCharades } from "./common.js";
     const $ = (id) => document.getElementById(id);
 
     let roomId = null;
     let unsub = null;
+
+    // You can replace these later with your own list (or load from questions.js)
+    const CHARADES_NAMES = [
+      "David Beckham",
+      "Taylor Swift",
+      "Harry Potter",
+      "Mr Bean",
+      "Elvis Presley",
+      "James Bond",
+      "Mario",
+      "Beyoncé",
+      "The Grinch",
+      "Santa Claus"
+    ];
+    let charadesIndex = 0;
 
     function renderScores(teams = [], scores = {}) {
       const box = $("scoreboard");
@@ -52,6 +91,9 @@
         box.innerHTML = "<p class='small'>No teams yet.</p>";
         return;
       }
+
+      // Populate actor team dropdown
+      $("actorTeam").innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join("");
 
       teams.forEach((team) => {
         const score = Number(scores[team] ?? 0);
@@ -81,6 +123,41 @@
       });
     }
 
+    function updateCharadesUI(data) {
+      const round = data?.game?.round ?? null;
+      const ch = data?.charades ?? null;
+
+      if (round !== "charades" || !ch) {
+        $("charadesInfo").textContent = "Not running.";
+        $("charadesTimer").style.display = "none";
+        $("charadesReveal").style.display = "none";
+        return;
+      }
+
+      $("charadesInfo").textContent = ch.actorTeam ? `Acting team: ${ch.actorTeam}` : "Pick an acting team and press Start.";
+
+      // Timer
+      if (ch.running && typeof ch.endsAt === "number") {
+        $("charadesTimer").style.display = "block";
+        const remaining = Math.max(0, Math.ceil((ch.endsAt - Date.now()) / 1000));
+        $("charadesTimer").textContent = String(remaining);
+
+        // keep ticking smoothly
+        requestAnimationFrame(() => updateCharadesUI(data));
+      } else {
+        $("charadesTimer").style.display = "block";
+        $("charadesTimer").textContent = "0";
+      }
+
+      // Reveal
+      if (ch.revealed) {
+        $("charadesReveal").style.display = "block";
+        $("charadesReveal").textContent = `Answer: ${ch.person ?? "—"}`;
+      } else {
+        $("charadesReveal").style.display = "none";
+      }
+    }
+
     $("open").onclick = async () => {
       roomId = $("room").value.trim();
       if (!roomId) {
@@ -103,12 +180,39 @@
           : "Buzz is open.";
 
         renderScores(data?.teams || [], data?.scores || {});
+        updateCharadesUI(data);
       });
     };
 
     $("reset").onclick = async () => {
       if (!roomId) return;
       await resetBuzz(roomId);
+    };
+
+    $("startCharadesBtn").onclick = async () => {
+      if (!roomId) return;
+      const teams = $("actorTeam").options;
+      if (!teams.length) {
+        alert("No teams yet — ask teams to join first.");
+        return;
+      }
+
+      const actorTeam = $("actorTeam").value;
+      const seconds = Number($("charadesSeconds").value || 60);
+      const person = CHARADES_NAMES[charadesIndex % CHARADES_NAMES.length];
+      charadesIndex++;
+
+      await startCharades(roomId, actorTeam, person, seconds);
+    };
+
+    $("stopCharadesBtn").onclick = async () => {
+      if (!roomId) return;
+      await stopCharades(roomId);
+    };
+
+    $("revealCharadesBtn").onclick = async () => {
+      if (!roomId) return;
+      await revealCharades(roomId);
     };
   </script>
 </body>
