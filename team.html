@@ -33,7 +33,7 @@
   </div>
 
   <script type="module">
-    import { ensureRoom, listenRoom, buzz } from "./common.js";
+    import { ensureRoom, listenRoom, buzz, registerTeam } from "./common.js";
     const $ = (id) => document.getElementById(id);
 
     let roomId = null;
@@ -43,10 +43,14 @@
     $("join").onclick = async () => {
       roomId = $("room").value.trim();
       teamName = $("team").value.trim();
-      if (!roomId || !teamName) { $("status").textContent = "Enter room + team name."; return; }
+      if (!roomId || !teamName) {
+        $("status").textContent = "Enter room + team name.";
+        return;
+      }
 
       $("status").textContent = "Joining…";
       await ensureRoom(roomId);
+      await registerTeam(roomId, teamName);
 
       $("live").style.display = "block";
       $("status").textContent = `Joined room: ${roomId}`;
