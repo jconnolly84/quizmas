@@ -522,10 +522,19 @@ function renderCharades(data) {
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
         latestData = data;
+        // Always render core UI first (so a broken editor can't break gameplay)
         renderRoundSelect();
-        renderEditorRoundSelect();
-        renderEditorList();
         updateVisibility(data);
+
+        // Render question editor (guarded)
+        try {
+          if (document.getElementById("editRoundSelect")) {
+            renderEditorRoundSelect();
+            renderEditorList();
+          }
+        } catch (e) {
+          console.warn("Editor render failed", e);
+        }
 
         const lockedBy = data?.buzz?.lockedBy ?? null;
         $("winner").textContent = lockedBy ? lockedBy : "—";
