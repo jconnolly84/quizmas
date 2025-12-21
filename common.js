@@ -221,18 +221,3 @@ export async function clearStage(roomId) {
     "buzz.lockedAt": null
   });
 }
-
-
-export async function ensureQuestionBank(roomId, bank) {
-  const ref = roomRef(roomId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error("Room missing");
-  const data = snap.data() || {};
-  if (data.questionBank) return;
-  await updateDoc(ref, { questionBank: bank });
-}
-
-
-export async function saveQuestionBank(roomId, bank) {
-  await updateDoc(roomRef(roomId), { questionBank: bank });
-}
