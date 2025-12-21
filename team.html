@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Quizmas Team</title>
   <link rel="stylesheet" href="./app.css" />
+<style>.hidden{display:none !important;}</style>
 </head>
 <body>
   <div class="wrap">
@@ -27,7 +28,7 @@
 
     <div class="card" id="live" style="display:none;">
       
-      <div class="card" style="background:#0f1627;">
+      <div id="teamLiveBox" class="card" style="background:#0f1627;">
         <div class="small" id="teamMeta">—</div>
         <div class="big" id="teamPrompt">—</div>
         <div id="teamOptions" class="small" style="margin-top:8px;"></div>
@@ -48,6 +49,16 @@
     let teamName = null;
     let unsub = null;
 
+    function updateTeamVisibility(data) {
+      const round = data?.game?.round ?? null;
+      const hasLive = !!data?.live;
+      const showCharades = round === "charades";
+      const showLive = !showCharades && hasLive;
+
+      const liveBox = document.getElementById("teamLiveBox");
+      if (liveBox) liveBox.classList.toggle("hidden", !showLive);
+    }
+
     $("join").onclick = async () => {
       roomId = $("room").value.trim();
       teamName = $("team").value.trim();
@@ -65,6 +76,7 @@
 
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
+        updateTeamVisibility(data);
         const round = data?.game?.round ?? null;
 
         // Default buzz UI (works for all rounds)

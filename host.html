@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Quizmas Host</title>
   <link rel="stylesheet" href="./app.css" />
+<style>.hidden{display:none !important;}</style>
 </head>
 <body>
   <div class="wrap">
@@ -25,20 +26,33 @@
     </div>
 
     <div class="card" id="live" style="display:none;">
-      <p class="small">First buzz:</p>
-      <div class="big" id="winner">—</div>
-      <p class="small" id="lockInfo"></p>
+      <div id="sectionBuzz">
+        <p class="small">First buzz:</p>
+        <div class="big" id="winner">—</div>
+        <p class="small" id="lockInfo"></p>
+      </div>
 
-      <hr/>
-
-      <h2>Scores</h2>
-      <div id="scoreboard"></div>
+      <details id="scoresDetails" open>
+        <summary><h2 style="display:inline">Scores</h2></summary>
+        <div id="sectionScores" style="margin-top:10px;">
+<div id="scoreboard"></div>
       <p class="small">Teams appear here automatically when they join.</p>
+        </div>
+      </details>
 
       
       <hr/>
-      <h2>Live Question</h2>
-      <div class="row">
+      <div id="sectionLive">
+        <h2>Live Question</h2>
+        <div id="liveDisplay" class="card" style="background:#0f1627;">
+          <div class="small" id="liveMeta">—</div>
+          <div class="big" id="livePrompt">—</div>
+          <div id="liveOptions" class="small" style="margin-top:8px;"></div>
+          <div id="liveAnswer" class="small" style="margin-top:10px; display:none;"></div>
+        </div>
+        <details id="liveControlsDetails" open>
+          <summary><span class="small">Controls</span></summary>
+          <div class="row">
         <div class="col">
           <label>Round</label><br/>
           <select id="roundSelect"></select>
@@ -50,13 +64,10 @@
           <button id="hideQ">Hide</button>
         </div>
       </div>
-      <div class="card" style="background:#0f1627;">
-        <div class="small" id="liveMeta">—</div>
-        <div class="big" id="livePrompt">—</div>
-        <div id="liveOptions" class="small" style="margin-top:8px;"></div>
-        <div id="liveAnswer" class="small" style="margin-top:10px; display:none;"></div>
+        </details>
       </div>
 
+      <div id="sectionCharades">
       <h2>Charades (Sherards)</h2>
       <div class="row">
         <div class="col">
@@ -94,6 +105,7 @@
         </div>
       </div>
       <p class="small">Tip: set this to the guessing team that got it right, or just the acting team if you prefer.</p>
+    </div>
     </div>
   </div>
 
@@ -250,7 +262,34 @@
       });
     }
 
-    function renderCharades(data) {
+    
+    function updateVisibility(data) {
+      const round = data?.game?.round ?? null;
+      const hasLive = !!data?.live;
+      const showCharades = round === "charades";
+      const showLive = !showCharades && hasLive;
+
+      // Main display: only show active thing
+      const liveSection = document.getElementById("sectionLive");
+      const charadesSection = document.getElementById("sectionCharades");
+      if (liveSection) liveSection.classList.toggle("hidden", !showLive);
+      if (charadesSection) charadesSection.classList.toggle("hidden", !showCharades);
+
+      // Hide buzzer status during active play to reduce clutter
+      const buzzSection = document.getElementById("sectionBuzz");
+      const roundActive = showCharades || showLive;
+      if (buzzSection) buzzSection.classList.toggle("hidden", roundActive);
+
+      // Scores available but auto-collapsed during play
+      const scoresDetails = document.getElementById("scoresDetails");
+      if (scoresDetails) scoresDetails.open = !roundActive;
+
+      // Live controls: keep collapsed during play
+      const liveControls = document.getElementById("liveControlsDetails");
+      if (liveControls) liveControls.open = !roundActive;
+    }
+
+function renderCharades(data) {
       const round = data?.game?.round ?? null;
       const ch = data?.charades ?? null;
 
@@ -305,6 +344,7 @@
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
         latestData = data;
+        updateVisibility(data);
 
         const lockedBy = data?.buzz?.lockedBy ?? null;
         $("winner").textContent = lockedBy ? lockedBy : "—";
