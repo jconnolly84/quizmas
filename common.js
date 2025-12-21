@@ -39,11 +39,7 @@ export async function ensureRoom(roomId) {
       scores: {},
 
       // Game state (new)
-      game: {
-        round: null,     // "charades" | later: "images" | "music" | "final"
-        index: 0,
-        reveal: false
-      },
+      game: { round: null, index: 0, reveal: false },
 
       // Charades state (new)
       live: null,
