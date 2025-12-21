@@ -71,6 +71,30 @@
 
         
 </div>
+
+      <details id="editorDetails">
+        <summary><span class="small">Question editor (add/remove)</span></summary>
+
+        <div class="card" style="margin-top:10px;">
+          <div class="row">
+            <div class="col">
+              <label>Edit round</label><br/>
+              <select id="editRoundSelect"></select>
+            </div>
+            <div class="col" style="display:flex; gap:8px; justify-content:flex-end; align-items:flex-end;">
+              <button id="addQA">Add Q&A</button>
+              <button id="addMCQ">Add MCQ</button>
+              <button id="saveBank">Save</button>
+            </div>
+          </div>
+
+          <div id="editorList" style="margin-top:12px;"></div>
+          <p class="small" style="opacity:.85; margin-top:10px;">
+            Tip: edits are saved into this room (so you can tweak questions during the game).
+          </p>
+        </div>
+      </details>
+
       </details>
 
             <details id="charadesDetails">
@@ -127,7 +151,9 @@
       stopCharades,
       revealCharades,
       setLiveQuestion,
-      setReveal
+      setReveal,
+      ensureQuestionBank,
+      saveQuestionBank
     } from "./common.js";
     import { QUIZ } from "./questions.js";
 
@@ -142,13 +168,20 @@
     let selectedRoundId = "quickfire";
     let questionIndex = 0;
 
+    function getBank() {
+      return latestData?.questionBank || QUIZ;
+    }
+    function getRounds() {
+      return (getBank()?.rounds || []);
+    }
+
     function getRound(id) {
-      return QUIZ.rounds.find(r => r.id === id);
+      return getRounds().find(r => r.id === id);
     }
 
     function renderRoundSelect() {
       const sel = $("roundSelect");
-      sel.innerHTML = QUIZ.rounds.map(r => `<option value="${r.id}">${r.name}</option>`).join("");
+      sel.innerHTML = getRounds().map(r => `<option value="${r.id}">${r.name}</option>`).join("");
       sel.value = selectedRoundId;
     }
 
@@ -162,7 +195,155 @@
         roundType: round.type,
         index: questionIndex,
         prompt: qObj.q
-      };
+      }
+
+    // ---------- Question editor (host only) ----------
+    let editRoundId = null;
+
+    function renderEditorRoundSelect() {
+      const sel = $("editRoundSelect");
+      const rounds = getRounds();
+      sel.innerHTML = rounds.map(r => `<option value="${r.id}">${r.name} (${r.type})</option>`).join("");
+      if (!editRoundId) editRoundId = rounds[0]?.id || null;
+      if (editRoundId && rounds.some(r => r.id === editRoundId)) sel.value = editRoundId;
+      else if (rounds[0]) { editRoundId = rounds[0].id; sel.value = editRoundId; }
+    }
+
+    function bankClone() {
+      return JSON.parse(JSON.stringify(getBank() || { rounds: [] }));
+    }
+
+    async function setBank(bank) {
+      if (!roomId) return;
+      await saveQuestionBank(roomId, bank);
+    }
+
+    function renderEditorList() {
+      const list = $("editorList");
+      list.innerHTML = "";
+
+      const rounds = getRounds();
+      const round = rounds.find(r => r.id === editRoundId);
+      if (!round) {
+        list.innerHTML = "<p class='small'>No round selected.</p>";
+        return;
+      }
+
+      const qs = Array.isArray(round.questions) ? round.questions : [];
+      if (!qs.length) {
+        list.innerHTML = "<p class='small'>No questions in this round yet.</p>";
+      }
+
+      qs.forEach((q, idx) => {
+        const wrap = document.createElement("div");
+        wrap.className = "card";
+        wrap.style.marginBottom = "10px";
+
+        const title = document.createElement("div");
+        title.className = "row";
+        title.innerHTML = `
+          <div class="col"><strong>Q${idx + 1}</strong> <span class="small">(${round.type})</span></div>
+          <div class="col" style="display:flex; justify-content:flex-end;">
+            <button data-del="${idx}">Delete</button>
+          </div>
+        `;
+        wrap.appendChild(title);
+
+        const qBox = document.createElement("textarea");
+        qBox.style.width = "100%";
+        qBox.style.minHeight = "60px";
+        qBox.value = q.q || "";
+        qBox.oninput = () => { q.q = qBox.value; };
+        wrap.appendChild(qBox);
+
+        if (round.type === "qa") {
+          const aBox = document.createElement("textarea");
+          aBox.style.width = "100%";
+          aBox.style.minHeight = "48px";
+          aBox.style.marginTop = "8px";
+          aBox.placeholder = "Answer";
+          aBox.value = q.a || "";
+          aBox.oninput = () => { q.a = aBox.value; };
+          wrap.appendChild(aBox);
+        }
+
+        if (round.type === "mcq") {
+          q.options = Array.isArray(q.options) ? q.options : ["", "", "", ""];
+          const optWrap = document.createElement("div");
+          optWrap.style.marginTop = "8px";
+
+          q.options.forEach((opt, i) => {
+            const row = document.createElement("div");
+            row.className = "row";
+            row.style.alignItems = "center";
+            row.innerHTML = `
+              <div class="col" style="max-width:40px;"><strong>${String.fromCharCode(65+i)}.</strong></div>
+              <div class="col"><input id="opt_${idx}_${i}" style="width:100%;" /></div>
+              <div class="col" style="max-width:180px; text-align:right;">
+                <label class="small"><input type="radio" name="correct_${idx}" value="${i}"> correct</label>
+              </div>
+            `;
+            optWrap.appendChild(row);
+
+            const inp = row.querySelector("input[id^='opt_']");
+            inp.value = opt || "";
+            inp.oninput = () => { q.options[i] = inp.value; };
+
+            const radio = row.querySelector("input[type='radio']");
+            radio.checked = Number(q.correctIndex ?? 0) === i;
+            radio.onchange = () => { q.correctIndex = i; };
+          });
+
+          wrap.appendChild(optWrap);
+        }
+
+        list.appendChild(wrap);
+      });
+
+      // delete buttons
+      list.querySelectorAll("button[data-del]").forEach(btn => {
+        btn.onclick = async () => {
+          const delIdx = Number(btn.getAttribute("data-del"));
+          const bank = bankClone();
+          const r = bank.rounds.find(r => r.id === editRoundId);
+          if (!r || !Array.isArray(r.questions)) return;
+          r.questions.splice(delIdx, 1);
+          await setBank(bank);
+        };
+      });
+    }
+
+    $("editRoundSelect").onchange = () => {
+      editRoundId = $("editRoundSelect").value;
+      renderEditorList();
+    };
+
+    $("addQA").onclick = async () => {
+      const bank = bankClone();
+      const r = bank.rounds.find(r => r.id === editRoundId);
+      if (!r) return;
+      if (r.type !== "qa") return alert("Select a Q&A round first.");
+      if (!Array.isArray(r.questions)) r.questions = [];
+      r.questions.push({ q: "New question…", a: "Answer…" });
+      await setBank(bank);
+    };
+
+    $("addMCQ").onclick = async () => {
+      const bank = bankClone();
+      const r = bank.rounds.find(r => r.id === editRoundId);
+      if (!r) return;
+      if (r.type !== "mcq") return alert("Select an MCQ round first.");
+      if (!Array.isArray(r.questions)) r.questions = [];
+      r.questions.push({ q: "New MCQ…", options: ["A", "B", "C", "D"], correctIndex: 0 });
+      await setBank(bank);
+    };
+
+    $("saveBank").onclick = async () => {
+      const bank = bankClone();
+      await setBank(bank);
+      alert("Saved.");
+    };
+;
 
       if (round.type === "qa") {
         live.answer = qObj.a;
@@ -337,6 +518,7 @@ function renderCharades(data) {
 
       $("status").textContent = "Opening room…";
       await ensureRoom(roomId);
+      await ensureQuestionBank(roomId, QUIZ);
 
       $("live").style.display = "block";
       renderRoundSelect();
@@ -345,6 +527,9 @@ function renderCharades(data) {
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
         latestData = data;
+        renderRoundSelect();
+        renderEditorRoundSelect();
+        renderEditorList();
         updateVisibility(data);
 
         const lockedBy = data?.buzz?.lockedBy ?? null;
