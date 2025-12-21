@@ -23,7 +23,8 @@
         </div>
       </div>
       <p class="small" id="status"></p>
-    </div>
+        </div>
+      </details>
 
     <div class="card" id="live" style="display:none;">
       <div id="sectionBuzz">
@@ -42,8 +43,9 @@
 
       
       <hr/>
-      <div id="sectionLive">
-        <h2>Live Question</h2>
+      <details id="liveDetails" open>
+        <summary><h2 style="display:inline">Live Question</h2></summary>
+        <div id="sectionLive" style="margin-top:10px;">
         <div id="liveDisplay" class="card" style="background:#0f1627;">
           <div class="small" id="liveMeta">—</div>
           <div class="big" id="livePrompt">—</div>
@@ -67,8 +69,12 @@
         </details>
       </div>
 
-      <div id="sectionCharades">
-      <h2>Charades (Sherards)</h2>
+              </div>
+      </details>
+
+      <details id="charadesDetails" open>
+        <summary><h2 style="display:inline">Charades (Sherards)</h2></summary>
+        <div id="sectionCharades" style="margin-top:10px;">
       <div class="row">
         <div class="col">
           <label>Acting team</label><br/>
@@ -269,26 +275,28 @@
       const showCharades = round === "charades";
       const showLive = !showCharades && hasLive;
 
-      // Main display: only show active thing
-      const liveSection = document.getElementById("sectionLive");
-      const charadesSection = document.getElementById("sectionCharades");
-      if (liveSection) liveSection.classList.toggle("hidden", !showLive);
-      if (charadesSection) charadesSection.classList.toggle("hidden", !showCharades);
-
-      // Hide buzzer status during active play to reduce clutter
-      const buzzSection = document.getElementById("sectionBuzz");
-      const roundActive = showCharades || showLive;
-      if (buzzSection) buzzSection.classList.toggle("hidden", roundActive);
-
-      // Scores available but auto-collapsed during play
+      // Always accessible: just auto-collapse sections depending on what's active
+      const liveDetails = document.getElementById("liveDetails");
+      const charadesDetails = document.getElementById("charadesDetails");
       const scoresDetails = document.getElementById("scoresDetails");
+      const liveControls = document.getElementById("liveControlsDetails");
+      const buzzSection = document.getElementById("sectionBuzz");
+
+      const roundActive = showCharades || showLive;
+
+      // Open the active section, collapse the rest (but never hide)
+      if (liveDetails) liveDetails.open = showLive || !roundActive;
+      if (charadesDetails) charadesDetails.open = showCharades || !roundActive;
+
+      // Keep scores available but collapsed during play
       if (scoresDetails) scoresDetails.open = !roundActive;
 
-      // Live controls: keep collapsed during play
-      const liveControls = document.getElementById("liveControlsDetails");
+      // Hide the 'First buzz' status during active play to reduce clutter
+      if (buzzSection) buzzSection.classList.toggle("hidden", roundActive);
+
+      // Live controls: collapse during active play; open during setup
       if (liveControls) liveControls.open = !roundActive;
     }
-
 function renderCharades(data) {
       const round = data?.game?.round ?? null;
       const ch = data?.charades ?? null;
