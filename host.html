@@ -74,7 +74,6 @@
 
       <details id="editorDetails">
         <summary><span class="small">Question editor (add/remove)</span></summary>
-
         <div class="card" style="margin-top:10px;">
           <div class="row">
             <div class="col">
@@ -87,7 +86,6 @@
               <button id="saveBank">Save</button>
             </div>
           </div>
-
           <div id="editorList" style="margin-top:12px;"></div>
           <p class="small" style="opacity:.85; margin-top:10px;">
             Tip: edits are saved into this room (so you can tweak questions during the game).
@@ -230,24 +228,22 @@
       }
 
       const qs = Array.isArray(round.questions) ? round.questions : [];
-      if (!qs.length) {
-        list.innerHTML = "<p class='small'>No questions in this round yet.</p>";
-      }
+      if (!qs.length) list.innerHTML = "<p class='small'>No questions in this round yet.</p>";
 
       qs.forEach((q, idx) => {
         const wrap = document.createElement("div");
         wrap.className = "card";
         wrap.style.marginBottom = "10px";
 
-        const title = document.createElement("div");
-        title.className = "row";
-        title.innerHTML = `
+        const head = document.createElement("div");
+        head.className = "row";
+        head.innerHTML = `
           <div class="col"><strong>Q${idx + 1}</strong> <span class="small">(${round.type})</span></div>
           <div class="col" style="display:flex; justify-content:flex-end;">
             <button data-del="${idx}">Delete</button>
           </div>
         `;
-        wrap.appendChild(title);
+        wrap.appendChild(head);
 
         const qBox = document.createElement("textarea");
         qBox.style.width = "100%";
@@ -300,7 +296,6 @@
         list.appendChild(wrap);
       });
 
-      // delete buttons
       list.querySelectorAll("button[data-del]").forEach(btn => {
         btn.onclick = async () => {
           const delIdx = Number(btn.getAttribute("data-del"));
@@ -323,7 +318,7 @@
       const r = bank.rounds.find(r => r.id === editRoundId);
       if (!r) return;
       if (r.type !== "qa") return alert("Select a Q&A round first.");
-      if (!Array.isArray(r.questions)) r.questions = [];
+      r.questions = Array.isArray(r.questions) ? r.questions : [];
       r.questions.push({ q: "New question…", a: "Answer…" });
       await setBank(bank);
     };
@@ -333,7 +328,7 @@
       const r = bank.rounds.find(r => r.id === editRoundId);
       if (!r) return;
       if (r.type !== "mcq") return alert("Select an MCQ round first.");
-      if (!Array.isArray(r.questions)) r.questions = [];
+      r.questions = Array.isArray(r.questions) ? r.questions : [];
       r.questions.push({ q: "New MCQ…", options: ["A", "B", "C", "D"], correctIndex: 0 });
       await setBank(bank);
     };
