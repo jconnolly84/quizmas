@@ -58,17 +58,45 @@
       <p class="small" id="charadesInfo"></p>
       <div class="big" id="charadesTimer" style="display:none;">60</div>
       <p class="small" id="charadesReveal" style="display:none;"></p>
+
+      <hr/>
+
+      <h3>Award points (Charades)</h3>
+      <div class="row">
+        <div class="col">
+          <label>Award to team</label><br/>
+          <select id="awardTeam"></select>
+        </div>
+        <div class="col" style="display:flex; gap:8px; justify-content:flex-end;">
+          <button id="awardMinus1">-1</button>
+          <button id="awardPlus1">+1</button>
+          <button id="awardPlus2">+2</button>
+        </div>
+      </div>
+      <p class="small">Tip: set this to the guessing team that got it right, or just the acting team if you prefer.</p>
     </div>
   </div>
 
   <script type="module">
-    import { ensureRoom, listenRoom, resetBuzz, changeScore, startCharades, stopCharades, revealCharades } from "./common.js";
+    import {
+      ensureRoom,
+      listenRoom,
+      resetBuzz,
+      changeScore,
+      startCharades,
+      stopCharades,
+      revealCharades
+    } from "./common.js";
+
     const $ = (id) => document.getElementById(id);
 
     let roomId = null;
     let unsub = null;
 
-    // You can replace these later with your own list (or load from questions.js)
+    // latest snapshot state (fixes Stop/Reveal UI issues)
+    let latestData = null;
+
+    // You can replace these later with your real charades list
     const CHARADES_NAMES = [
       "David Beckham",
       "Taylor Swift",
@@ -89,11 +117,14 @@
 
       if (!teams.length) {
         box.innerHTML = "<p class='small'>No teams yet.</p>";
+        $("actorTeam").innerHTML = "";
+        $("awardTeam").innerHTML = "";
         return;
       }
 
-      // Populate actor team dropdown
+      // Populate dropdowns (actor + award)
       $("actorTeam").innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join("");
+      $("awardTeam").innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join("");
 
       teams.forEach((team) => {
         const score = Number(scores[team] ?? 0);
@@ -123,7 +154,7 @@
       });
     }
 
-    function updateCharadesUI(data) {
+    function renderCharades(data) {
       const round = data?.game?.round ?? null;
       const ch = data?.charades ?? null;
 
@@ -134,18 +165,16 @@
         return;
       }
 
-      $("charadesInfo").textContent = ch.actorTeam ? `Acting team: ${ch.actorTeam}` : "Pick an acting team and press Start.";
+      $("charadesInfo").textContent = ch.actorTeam
+        ? `Acting team: ${ch.actorTeam}`
+        : "Pick an acting team and press Start.";
 
-      // Timer
+      // Timer (always based on latestData — no stale snapshots)
+      $("charadesTimer").style.display = "block";
       if (ch.running && typeof ch.endsAt === "number") {
-        $("charadesTimer").style.display = "block";
         const remaining = Math.max(0, Math.ceil((ch.endsAt - Date.now()) / 1000));
         $("charadesTimer").textContent = String(remaining);
-
-        // keep ticking smoothly
-        requestAnimationFrame(() => updateCharadesUI(data));
       } else {
-        $("charadesTimer").style.display = "block";
         $("charadesTimer").textContent = "0";
       }
 
@@ -157,6 +186,11 @@
         $("charadesReveal").style.display = "none";
       }
     }
+
+    // Timer tick (updates only display — Firestore is source of truth)
+    setInterval(() => {
+      if (latestData) renderCharades(latestData);
+    }, 200);
 
     $("open").onclick = async () => {
       roomId = $("room").value.trim();
@@ -173,6 +207,8 @@
 
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
+        latestData = data;
+
         const lockedBy = data?.buzz?.lockedBy ?? null;
         $("winner").textContent = lockedBy ? lockedBy : "—";
         $("lockInfo").textContent = lockedBy
@@ -180,7 +216,15 @@
           : "Buzz is open.";
 
         renderScores(data?.teams || [], data?.scores || {});
-        updateCharadesUI(data);
+        renderCharades(data);
+
+        // Helpful default: when charades is active, set award dropdown to acting team
+        if (data?.game?.round === "charades" && data?.charades?.actorTeam) {
+          const actor = data.charades.actorTeam;
+          if ([...$("awardTeam").options].some(o => o.value === actor)) {
+            $("awardTeam").value = actor;
+          }
+        }
       });
     };
 
@@ -191,18 +235,21 @@
 
     $("startCharadesBtn").onclick = async () => {
       if (!roomId) return;
-      const teams = $("actorTeam").options;
-      if (!teams.length) {
+
+      const actorTeam = $("actorTeam").value;
+      const seconds = Number($("charadesSeconds").value || 60);
+      if (!actorTeam) {
         alert("No teams yet — ask teams to join first.");
         return;
       }
 
-      const actorTeam = $("actorTeam").value;
-      const seconds = Number($("charadesSeconds").value || 60);
       const person = CHARADES_NAMES[charadesIndex % CHARADES_NAMES.length];
       charadesIndex++;
 
       await startCharades(roomId, actorTeam, person, seconds);
+
+      // default awarding to the acting team (you can change it)
+      $("awardTeam").value = actorTeam;
     };
 
     $("stopCharadesBtn").onclick = async () => {
@@ -213,6 +260,28 @@
     $("revealCharadesBtn").onclick = async () => {
       if (!roomId) return;
       await revealCharades(roomId);
+    };
+
+    // Award points buttons
+    $("awardMinus1").onclick = async () => {
+      if (!roomId) return;
+      const team = $("awardTeam").value;
+      if (!team) return;
+      await changeScore(roomId, team, -1);
+    };
+
+    $("awardPlus1").onclick = async () => {
+      if (!roomId) return;
+      const team = $("awardTeam").value;
+      if (!team) return;
+      await changeScore(roomId, team, 1);
+    };
+
+    $("awardPlus2").onclick = async () => {
+      if (!roomId) return;
+      const team = $("awardTeam").value;
+      if (!team) return;
+      await changeScore(roomId, team, 2);
     };
   </script>
 </body>
