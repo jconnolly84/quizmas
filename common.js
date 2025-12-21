@@ -21,7 +21,7 @@ function roomRef(roomId) {
 
 /**
  * Creates the room document if it doesn't exist.
- * Includes buzzer + scoring + (now) game/charades state.
+ * Includes buzzer + scoring + game/charades/live-question state.
  */
 export async function ensureRoom(roomId) {
   const ref = roomRef(roomId);
@@ -38,17 +38,18 @@ export async function ensureRoom(roomId) {
       teams: [],
       scores: {},
 
-      // Game state (new)
+      // Stage state
       game: { round: null, index: 0, reveal: false },
 
-      // Charades state (new)
+      // Live questions (preloaded)
       live: null,
       reveal: false,
 
+      // Charades state
       charades: {
         actorTeam: null,
         person: null,
-        endsAt: null,      // ms epoch
+        endsAt: null,
         running: false,
         revealed: false
       }
@@ -56,15 +57,17 @@ export async function ensureRoom(roomId) {
     return;
   }
 
-  // If the room already existed (from earlier), ensure new fields exist
+  // If the room already existed, ensure new fields exist
   const data = snap.data() || {};
   const patch = {};
 
   if (!data.teams) patch.teams = [];
   if (!data.scores) patch.scores = {};
-  if (!data.game) {
-    patch.game = { round: null, index: 0, reveal: false };
-  }
+
+  if (!data.game) patch.game = { round: null, index: 0, reveal: false };
+  if (data.live === undefined) patch.live = null;
+  if (data.reveal === undefined) patch.reveal = false;
+
   if (!data.charades) {
     patch.charades = { actorTeam: null, person: null, endsAt: null, running: false, revealed: false };
   }
@@ -78,9 +81,7 @@ export async function ensureRoom(roomId) {
  * Live listener for a room document.
  */
 export function listenRoom(roomId, cb) {
-  return onSnapshot(roomRef(roomId), (snap) =>
-    cb(snap.exists() ? snap.data() : null)
-  );
+  return onSnapshot(roomRef(roomId), (snap) => cb(snap.exists() ? snap.data() : null));
 }
 
 /**
@@ -114,8 +115,6 @@ export async function buzz(roomId, teamName) {
 
 /**
  * Registers a team in the room (idempotent).
- * - Adds team to teams[] if missing
- * - Initialises score to 0 if missing
  */
 export async function registerTeam(roomId, teamName) {
   const ref = roomRef(roomId);
@@ -128,19 +127,15 @@ export async function registerTeam(roomId, teamName) {
     const teams = Array.isArray(data.teams) ? [...data.teams] : [];
     const scores = data.scores ? { ...data.scores } : {};
 
-    if (!teams.includes(teamName)) {
-      teams.push(teamName);
-    }
-    if (scores[teamName] === undefined) {
-      scores[teamName] = 0;
-    }
+    if (!teams.includes(teamName)) teams.push(teamName);
+    if (scores[teamName] === undefined) scores[teamName] = 0;
 
     tx.update(ref, { teams, scores });
   });
 }
 
 /**
- * Adjusts a team's score by delta (e.g. +1, +2, -1).
+ * Adjusts a team's score by delta.
  */
 export async function changeScore(roomId, teamName, delta) {
   const ref = roomRef(roomId);
@@ -154,79 +149,75 @@ export async function changeScore(roomId, teamName, delta) {
     const current = Number(scores[teamName] ?? 0);
 
     scores[teamName] = current + Number(delta);
-
     tx.update(ref, { scores });
   });
 }
 
 /**
- * CHARADES: Start a round.
- */
-export async function startCharades(roomId, actorTeam, person, seconds) {
-  const endsAt = Date.now() + (Number(seconds) * 1000);
-
-  await updateDoc(roomRef(roomId), {
-    game: { round: "charades", index: Date.now(), reveal: false },
-    live: null,
-      reveal: false,
-
-      charades: {
-      actorTeam,
-      person,
-      endsAt,
-      running: true,
-      revealed: false
-    },
-    // clear buzzer for this round
-    "buzz.lockedBy": null,
-    "buzz.lockedAt": null
-  });
-}
-
-/**
- * CHARADES: Stop the timer early (doesn't reveal).
- */
-export async function stopCharades(roomId) {
-  await updateDoc(roomRef(roomId), {
-    "charades.running": false
-  });
-}
-
-/**
- * CHARADES: Reveal the person name on host (and stop timer).
- */
-export async function revealCharades(roomId) {
-  await updateDoc(roomRef(roomId), {
-    "charades.revealed": true,
-    "charades.running": false
-  });
-}
-
-
-/**
- * Sets the current live question (host controlled).
+ * LIVE QUESTIONS: sets the current question and switches stage to "questions".
  */
 export async function setLiveQuestion(roomId, live) {
   await updateDoc(roomRef(roomId), {
     live,
     reveal: false,
-    game: { round: "questions", index: live?.index ?? 0, reveal: false },
+    game: { round: "questions", index: Number(live?.index ?? 0), reveal: false },
+
     // Clear any previous charades state so devices switch cleanly
-    charades: {
-      actorTeam: null,
-      person: null,
-      endsAt: null,
-      running: false,
-      revealed: false
-    },
+    charades: { actorTeam: null, person: null, endsAt: null, running: false, revealed: false },
+
+    // Reset buzzer for the question
     "buzz.lockedBy": null,
     "buzz.lockedAt": null
   });
 }
 
-/**
- * Toggles reveal for the live question.
- */
 export async function setReveal(roomId, reveal) {
   await updateDoc(roomRef(roomId), { reveal: !!reveal });
+}
+
+/**
+ * CHARADES: start and take control of the stage.
+ */
+export async function startCharades(roomId, actorTeam, person, seconds) {
+  await updateDoc(roomRef(roomId), {
+    game: { round: "charades", index: 0, reveal: false },
+
+    // Clear any previous live question so teams don't keep seeing it
+    live: null,
+    reveal: false,
+
+    charades: {
+      actorTeam,
+      person,
+      endsAt: Date.now() + Number(seconds) * 1000,
+      running: true,
+      revealed: false
+    },
+
+    // Clear buzzer for this round
+    "buzz.lockedBy": null,
+    "buzz.lockedAt": null
+  });
+}
+
+export async function stopCharades(roomId) {
+  await updateDoc(roomRef(roomId), { "charades.running": false });
+}
+
+export async function revealCharades(roomId) {
+  await updateDoc(roomRef(roomId), { "charades.revealed": true, "charades.running": false });
+}
+
+/**
+ * Clears the stage and returns everyone to buzzer-only mode.
+ */
+export async function clearStage(roomId) {
+  await updateDoc(roomRef(roomId), {
+    live: null,
+    reveal: false,
+    game: { round: null, index: 0, reveal: false },
+    charades: { actorTeam: null, person: null, endsAt: null, running: false, revealed: false },
+    "buzz.lockedBy": null,
+    "buzz.lockedAt": null
+  });
 }
