@@ -40,62 +40,7 @@
         </div>
       </details>
 
-      
-      <hr/>
-      <details id="liveDetails" open>
-        <summary><h2 style="display:inline">Live Question</h2></summary>
-        <div style="margin-top:10px;">
-          <div class="card" style="background:#0f1627;">
-        <div class="small" id="liveMeta">—</div>
-        <div class="big" id="livePrompt">—</div>
-        <div id="liveOptions" class="small" style="margin-top:8px;"></div>
-        <div id="liveAnswer" class="small" style="margin-top:10px; display:none;"></div>
-          <div id="awardTarget" class="small" style="margin-top:8px;"></div>
-      </div>
-
-      <div class="row" style="margin-top:10px;">
-        <div class="col">
-          <label>Round</label><br/>
-          <select id="roundSelect"></select>
-        </div>
-        <div class="col" style="display:flex; gap:8px; justify-content:flex-end; align-items:flex-end;">
-          <button id="prevQ">Prev</button>
-          <button id="nextQ">Next</button>
-          <button id="revealQ">Reveal</button>
-          <button id="hideQ">Hide</button>
-          <button id="awardQPlus1">+1 Correct</button>
-          <button id="awardQMinus1">-1 Wrong</button>
-          <button id="awardQPlus2">+2</button>
-        </div>
-      </div>
-
-        
-</div>
-
-      <details id="editorDetails">
-        <summary><span class="small">Question editor (add/remove)</span></summary>
-        <div class="card" style="margin-top:10px;">
-          <div class="row">
-            <div class="col">
-              <label>Edit round</label><br/>
-              <select id="editRoundSelect"></select>
-              <div id="editorStatus" class="small" style="opacity:.8; margin-top:6px;"></div>
-            </div>
-            <div class="col" style="display:flex; gap:8px; justify-content:flex-end; align-items:flex-end; flex-wrap:wrap;">
-              <button id="addQA">Add Q&A</button>
-              <button id="addMCQ">Add MCQ</button>
-              <button id="resetBank">Reset bank</button>
-              <button id="saveBankLocal">Save</button>
-            </div>
-          </div>
-          <div id="editorList" style="margin-top:12px;"></div>
-          <p class="small" style="opacity:.85; margin-top:10px;">
-            Saved to this browser (localStorage) so you can tweak questions during the game without breaking the room.
-          </p>
-        </div>
-      </details>
-
-      </details>
+</details>
 
             <details id="charadesDetails">
         <summary><h2 style="display:inline">Charades (Sherards)</h2></summary>
@@ -143,28 +88,23 @@
 
   <script type="module">
     import {
+      
       ensureRoom,
       listenRoom,
       resetBuzz,
       changeScore,
       startCharades,
       stopCharades,
-      revealCharades,
-      setLiveQuestion,
-      setReveal
+      revealCharades
+    
     } from "./common.js";
-    import { QUIZ } from "./questions.js";
-
-    const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
 
     let roomId = null;
     let unsub = null;
 
     // latest snapshot state (fixes Stop/Reveal UI issues)
     let latestData = null;
-
-    let selectedRoundId = "quickfire";
-    let questionIndex = 0;
 
     let localBank = null;
 
@@ -180,41 +120,10 @@
       try { localStorage.setItem("quizmas_bank", JSON.stringify(bank)); } catch (e) {}
     }
 
-    function getBank() {
-      if (!localBank) localBank = loadLocalBank() || QUIZ;
-      return localBank;
-    }
-
     function setBank(bank) {
       localBank = bank;
       saveLocalBank(bank);
     }
-
-    function getRounds() {
-      return (getBank()?.rounds || []);
-    }
-
-    function getRound(id) {
-      return getRounds().find(r => r.id === id);
-    }
-
-    function renderRoundSelect() {
-      const sel = $("roundSelect");
-      sel.innerHTML = getRounds().map(r => `<option value="${r.id}">${r.name}</option>`).join("");
-      sel.value = selectedRoundId;
-    }
-
-    async function pushLiveQuestion() {
-      const round = getRound(selectedRoundId);
-      if (!round) return;
-
-      const qObj = round.questions[questionIndex % round.questions.length];
-      const live = {
-        roundId: round.id,
-        roundType: round.type,
-        index: questionIndex,
-        prompt: qObj.q
-      }
 
     // ---------- Local question editor (host only) ----------
     let editRoundId = null;
@@ -384,7 +293,6 @@
       if (!confirm("Reset question bank back to default?")) return;
       setBank(QUIZ);
       editRoundId = null;
-      renderRoundSelect();
       // Keep round dropdown in sync with local editor bank
       try { renderEditorRoundSelect(); renderEditorList(); } catch (e) {}
       renderEditorRoundSelect();
@@ -395,7 +303,6 @@
     $("saveBankLocal").onclick = () => {
       // already saved on every change, but keep a button for confidence
       setBank(bankClone());
-      renderRoundSelect();
       renderEditorRoundSelect();
       renderEditorList();
       alert("Saved.");
@@ -522,23 +429,17 @@
     }
 
     
+    
     function updateVisibility(data) {
       const round = data?.game?.round ?? null;
-      const hasLive = !!data?.live;
       const showCharades = round === "charades";
-      const showLive = !showCharades && hasLive;
-
-      const liveDetails = document.getElementById("liveDetails");
-      const charadesDetails = document.getElementById("charadesDetails");
       const scoresDetails = document.getElementById("scoresDetails");
+      const charadesDetails = document.getElementById("charadesDetails");
       const buzzSection = document.getElementById("sectionBuzz");
-const roundActive = showCharades || showLive;
 
-      if (liveDetails) liveDetails.open = showLive;
       if (charadesDetails) charadesDetails.open = showCharades;
-      if (scoresDetails) scoresDetails.open = !roundActive;
-
-      if (buzzSection) buzzSection.classList.toggle("hidden", roundActive);
+      if (scoresDetails) scoresDetails.open = !showCharades;
+      if (buzzSection) buzzSection.classList.toggle("hidden", showCharades);
     }
 
 function renderCharades(data) {
@@ -590,7 +491,6 @@ function renderCharades(data) {
       await ensureRoom(roomId);
 
       $("live").style.display = "block";
-      renderRoundSelect();
       $("status").textContent = `Room ready: ${roomId}`;
 
       if (unsub) unsub();
@@ -610,28 +510,6 @@ function renderCharades(data) {
 
         renderScores(data?.teams || [], data?.scores || {});
         renderCharades(data);
-
-
-        const liveQ = data?.live || null;
-        const reveal = !!data?.reveal;
-
-        if (!liveQ) {
-          $("liveMeta").textContent = "No live question";
-          $("livePrompt").textContent = "—";
-          $("liveOptions").textContent = "";
-          $("liveAnswer").style.display = "none";
-        } else {
-          $("liveMeta").textContent = `${liveQ.roundId.toUpperCase()} • Q${(liveQ.index ?? 0) + 1}`;
-          $("livePrompt").textContent = liveQ.prompt || "—";
-
-          if (liveQ.roundType === "mcq" && Array.isArray(liveQ.options)) {
-            $("liveOptions").innerHTML = liveQ.options
-              .map((o,i)=>`<div><strong>${String.fromCharCode(65+i)}.</strong> ${o}</div>`)
-              .join("");
-          } else {
-            $("liveOptions").textContent = "";
-          }
-
           if (reveal) {
             $("liveAnswer").style.display = "block";
             $("liveAnswer").textContent = `Answer: ${liveQ.answer ?? "—"}`;
@@ -684,51 +562,19 @@ function renderCharades(data) {
       if (!roomId) return;
       await revealCharades(roomId);
     };
-
-    
-    $("roundSelect").onchange = async () => {
-      selectedRoundId = $("roundSelect").value;
       questionIndex = 0;
       await pushLiveQuestion();
     };
-
-    $("nextQ").onclick = async () => {
-      questionIndex++;
       await pushLiveQuestion();
     };
-
-    $("prevQ").onclick = async () => {
-      questionIndex = Math.max(0, questionIndex - 1);
       await pushLiveQuestion();
     };
-
-    $("revealQ").onclick = async () => {
-      if (!roomId) return;
       await setReveal(roomId, true);
     };
-
-    $("hideQ").onclick = async () => {
-      if (!roomId) return;
       await setReveal(roomId, false);
     };
-
-    function getBuzzWinner() {
-      return latestData?.buzz?.lockedBy || null;
-    }
-
-    async function awardToWinner(delta) {
-      if (!roomId) return;
-      const winner = getBuzzWinner();
-      if (!winner) {
-        alert("No team has buzzed in yet.");
-        return;
-      }
       await changeScore(roomId, winner, delta);
     }
-
-    $("awardQPlus1").onclick = async () => awardToWinner(1);
-    $("awardQMinus1").onclick = async () => awardToWinner(-1);
-    $("awardQPlus2").onclick = async () => awardToWinner(2);
 
 
     // Award points buttons

@@ -27,10 +27,7 @@
     </div>
 
     <div class="card" id="live" style="display:none;">
-      
-      <div id="teamLiveBox" class="card" style="background:#0f1627;">
-        <div class="small" id="teamMeta">—</div>
-        <div class="big" id="teamPrompt">—</div>
+<div class="big" id="teamPrompt">—</div>
         <div id="teamOptions" class="small" style="margin-top:8px;"></div>
         <div id="teamReveal" class="small" style="margin-top:10px; display:none;"></div>
       </div>
@@ -49,16 +46,6 @@
     let teamName = null;
     let unsub = null;
 
-    function updateTeamVisibility(data) {
-      const round = data?.game?.round ?? null;
-      const hasLive = !!data?.live;
-      const showCharades = round === "charades";
-      const showLive = !showCharades && hasLive;
-
-      const liveBox = document.getElementById("teamLiveBox");
-      if (liveBox) liveBox.classList.toggle("hidden", !showLive);
-    }
-
     $("join").onclick = async () => {
       roomId = $("room").value.trim();
       teamName = $("team").value.trim();
@@ -76,7 +63,6 @@
 
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
-        updateTeamVisibility(data);
         const round = data?.game?.round ?? null;
 
         // Default buzz UI (works for all rounds)
@@ -88,30 +74,6 @@
           $("buzzBtn").disabled = true;
           $("buzzBtn").textContent = "LOCKED";
         }
-
-
-        const liveQ = data?.live || null;
-        const roundCleared = !data?.game?.round && !liveQ;
-        if (roundCleared) {
-          $("teamMeta").textContent = "Waiting for host…";
-          $("teamPrompt").textContent = "—";
-          $("teamOptions").textContent = "";
-          $("teamReveal").style.display = "none";
-        }
-        const reveal = !!data?.reveal;
-
-        if (liveQ) {
-          $("teamMeta").textContent = `${liveQ.roundId.toUpperCase()} • Q${(liveQ.index ?? 0) + 1}`;
-          $("teamPrompt").textContent = liveQ.prompt || "—";
-
-          if (liveQ.roundType === "mcq" && Array.isArray(liveQ.options)) {
-            $("teamOptions").innerHTML = liveQ.options
-              .map((o,i)=>`<div><strong>${String.fromCharCode(65+i)}.</strong> ${o}</div>`)
-              .join("");
-          } else {
-            $("teamOptions").textContent = "";
-          }
-
           if (reveal) {
             $("teamReveal").style.display = "block";
             $("teamReveal").textContent = `Answer: ${liveQ.answer ?? "—"}`;
