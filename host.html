@@ -1,86 +1,108 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Quizmas Host</title>
-  <link rel="stylesheet" href="./app.css" />
-<style>.hidden{display:none !important;}</style>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#0b1020;color:#e9eefc}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    h1{margin:8px 0 16px}
+    .card{background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin:10px 0}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .col{flex:1;min-width:220px}
+    label{opacity:.85}
+    input,select,button{font:inherit}
+    input,select{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0f1627;color:#e9eefc;width:100%}
+    button{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#1a2550;color:#e9eefc;cursor:pointer}
+    button:hover{filter:brightness(1.05)}
+    .small{font-size:.9rem;opacity:.85}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#0f1627;border:1px solid rgba(255,255,255,.12)}
+    details summary{cursor:pointer}
+    table{width:100%;border-collapse:collapse}
+    td,th{padding:8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+    .right{text-align:right}
+    .winner{font-size:1.4rem;font-weight:700}
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Host Console</h1>
+    <h1>🎄 Quizmas – Host</h1>
 
     <div class="card">
       <div class="row">
         <div class="col">
-          <label>Room code</label><br/>
-          <input id="room" placeholder="e.g. quizmas" />
+          <label>Room code</label>
+          <input id="room" placeholder="e.g. quiz1" />
         </div>
-        <div class="col">
+        <div class="col" style="display:flex;gap:10px;align-items:flex-end;justify-content:flex-end;">
           <button id="open">Open / Create Room</button>
-          <button id="reset">Reset Buzz</button>
+          <button id="resetBuzzBtn">Reset Buzz</button>
         </div>
       </div>
-      <p class="small" id="status"></p>
+      <div id="status" class="small" style="margin-top:8px;">Not connected.</div>
     </div>
 
-    <div class="card" id="live" style="display:none;">
-      <div id="sectionBuzz">
-        <p class="small">First buzz:</p>
-        <div class="big" id="winner">—</div>
-        <p class="small" id="lockInfo"></p>
+    <div id="main" style="display:none;">
+      <div class="card">
+        <div class="row">
+          <div class="col">
+            <div class="small">First buzz</div>
+            <div class="winner" id="winner">—</div>
+            <div class="small" id="awardHint">Award points to: (no buzz yet)</div>
+          </div>
+          <div class="col right">
+            <span class="pill" id="modePill">Mode: Buzzer</span>
+          </div>
+        </div>
       </div>
 
       <details id="scoresDetails" open>
-        <summary><h2 style="display:inline">Scores</h2></summary>
-        <div style="margin-top:10px;">
-      <div id="scoreboard"></div>
-      <p class="small">Teams appear here automatically when they join.</p>
+        <summary><strong>Scores</strong> <span class="small">(tap to collapse)</span></summary>
+        <div class="card">
+          <table>
+            <thead><tr><th>Team</th><th class="right">Score</th><th class="right">Adjust</th></tr></thead>
+            <tbody id="scoresBody"></tbody>
+          </table>
         </div>
       </details>
 
-</details>
+      <details id="charadesDetails">
+        <summary><strong>Charades (Sherards)</strong> <span class="small">(tap to collapse)</span></summary>
+        <div class="card">
+          <div class="row">
+            <div class="col">
+              <label>Actor team</label>
+              <select id="actorTeam"></select>
+            </div>
+            <div class="col">
+              <label>Seconds</label>
+              <input id="charSeconds" type="number" min="10" value="60"/>
+            </div>
+            <div class="col" style="display:flex;gap:10px;justify-content:flex-end;align-items:flex-end;">
+              <button id="startCharadesBtn">Start</button>
+              <button id="stopCharadesBtn">Stop</button>
+              <button id="revealCharadesBtn">Reveal</button>
+            </div>
+          </div>
 
-            <details id="charadesDetails">
-        <summary><h2 style="display:inline">Charades (Sherards)</h2></summary>
-        <div style="margin-top:10px;">
-<div class="row">
-        <div class="col">
-          <label>Acting team</label><br/>
-          <select id="actorTeam"></select>
-        </div>
-        <div class="col">
-          <label>Seconds</label><br/>
-          <input id="charadesSeconds" type="number" value="60" min="10" />
-        </div>
-      </div>
+          <div class="row" style="margin-top:10px;">
+            <div class="col">
+              <div class="small">Timer</div>
+              <div class="winner" id="charTimer">—</div>
+              <div class="small">Person is hidden from host until Reveal.</div>
+            </div>
+            <div class="col right">
+              <button id="awardMinus1">-1</button>
+              <button id="awardPlus1">+1</button>
+              <button id="awardPlus2">+2</button>
+            </div>
+          </div>
 
-      <div class="row">
-        <button id="startCharadesBtn">Start</button>
-        <button id="stopCharadesBtn">Stop</button>
-        <button id="revealCharadesBtn">Reveal</button>
-      </div>
-
-      <p class="small" id="charadesInfo"></p>
-      <div class="big" id="charadesTimer" style="display:none;">60</div>
-      <p class="small" id="charadesReveal" style="display:none;"></p>
-
-      <hr/>
-
-      <h3>Award points (Charades)</h3>
-      <div class="row">
-        <div class="col">
-          <label>Award to team</label><br/>
-          <select id="awardTeam"></select>
-        </div>
-        <div class="col" style="display:flex; gap:8px; justify-content:flex-end;">
-          <button id="awardMinus1">-1</button>
-          <button id="awardPlus1">+1</button>
-          <button id="awardPlus2">+2</button>
-        </div>
-      </div>
-      <p class="small">Tip: set this to the guessing team that got it right, or just the acting team if you prefer.</p>
+          <div id="charRevealBox" class="card" style="display:none;margin-top:10px;background:#0f1627;">
+            <div class="small">Reveal</div>
+            <div class="winner" id="charPerson">—</div>
+          </div>
         </div>
       </details>
     </div>
@@ -88,7 +110,6 @@
 
   <script type="module">
     import {
-      
       ensureRoom,
       listenRoom,
       resetBuzz,
@@ -96,508 +117,144 @@
       startCharades,
       stopCharades,
       revealCharades
-    
     } from "./common.js";
-const $ = (id) => document.getElementById(id);
+
+    const $ = (id) => document.getElementById(id);
 
     let roomId = null;
     let unsub = null;
+    let latest = null;
+    let timerInt = null;
 
-    // latest snapshot state (fixes Stop/Reveal UI issues)
-    let latestData = null;
-
-    let localBank = null;
-
-    function loadLocalBank() {
-      try {
-        const raw = localStorage.getItem("quizmas_bank");
-        if (raw) return JSON.parse(raw);
-      } catch (e) {}
-      return null;
-    }
-
-    function saveLocalBank(bank) {
-      try { localStorage.setItem("quizmas_bank", JSON.stringify(bank)); } catch (e) {}
-    }
-
-    function setBank(bank) {
-      localBank = bank;
-      saveLocalBank(bank);
-    }
-
-    // ---------- Local question editor (host only) ----------
-    let editRoundId = null;
-
-    function renderEditorRoundSelect() {
-      const sel = $("editRoundSelect");
-      const rounds = getRounds();
-      sel.innerHTML = rounds.map(r => `<option value="${r.id}">${r.name} (${r.type})</option>`).join("");
-      if (!editRoundId) editRoundId = rounds[0]?.id || null;
-      if (editRoundId && rounds.some(r => r.id === editRoundId)) sel.value = editRoundId;
-      else if (rounds[0]) { editRoundId = rounds[0].id; sel.value = editRoundId; }
-      const st = document.getElementById("editorStatus");
-      if (st) st.textContent = `Rounds loaded: ${rounds.length} (local)`;
-    }
-
-    function bankClone() {
-      return JSON.parse(JSON.stringify(getBank() || { rounds: [] }));
-    }
-
-    function renderEditorList() {
-      const list = $("editorList");
-      list.innerHTML = "";
-
-      const rounds = getRounds();
-      const round = rounds.find(r => r.id === editRoundId);
-      if (!round) {
-        list.innerHTML = "<p class='small'>No round selected.</p>";
-        return;
-      }
-
-      const qs = Array.isArray(round.questions) ? round.questions : [];
-      if (!qs.length) list.innerHTML = "<p class='small'>No questions in this round yet.</p>";
-
-      qs.forEach((q, idx) => {
-        const wrap = document.createElement("div");
-        wrap.className = "card";
-        wrap.style.marginBottom = "10px";
-
-        const head = document.createElement("div");
-        head.className = "row";
-        head.innerHTML = `
-          <div class="col"><strong>Q${idx + 1}</strong> <span class="small">(${round.type})</span></div>
-          <div class="col" style="display:flex; justify-content:flex-end; gap:8px;">
-            <button data-up="${idx}">↑</button>
-            <button data-down="${idx}">↓</button>
-            <button data-del="${idx}">Delete</button>
-          </div>
-        `;
-        wrap.appendChild(head);
-
-        const qBox = document.createElement("textarea");
-        qBox.style.width = "100%";
-        qBox.style.minHeight = "60px";
-        qBox.value = q.q || "";
-        qBox.oninput = () => { q.q = qBox.value; };
-        wrap.appendChild(qBox);
-
-        if (round.type === "qa") {
-          const aBox = document.createElement("textarea");
-          aBox.style.width = "100%";
-          aBox.style.minHeight = "48px";
-          aBox.style.marginTop = "8px";
-          aBox.placeholder = "Answer";
-          aBox.value = q.a || "";
-          aBox.oninput = () => { q.a = aBox.value; };
-          wrap.appendChild(aBox);
-        }
-
-        if (round.type === "mcq") {
-          q.options = Array.isArray(q.options) ? q.options : ["", "", "", ""];
-          const optWrap = document.createElement("div");
-          optWrap.style.marginTop = "8px";
-
-          q.options.forEach((opt, i) => {
-            const row = document.createElement("div");
-            row.className = "row";
-            row.style.alignItems = "center";
-            row.innerHTML = `
-              <div class="col" style="max-width:40px;"><strong>${String.fromCharCode(65+i)}.</strong></div>
-              <div class="col"><input id="opt_${idx}_${i}" style="width:100%;" /></div>
-              <div class="col" style="max-width:180px; text-align:right;">
-                <label class="small"><input type="radio" name="correct_${idx}" value="${i}"> correct</label>
-              </div>
-            `;
-            optWrap.appendChild(row);
-
-            const inp = row.querySelector("input[id^='opt_']");
-            inp.value = opt || "";
-            inp.oninput = () => { q.options[i] = inp.value; };
-
-            const radio = row.querySelector("input[type='radio']");
-            radio.checked = Number(q.correctIndex ?? 0) === i;
-            radio.onchange = () => { q.correctIndex = i; };
-          });
-
-          wrap.appendChild(optWrap);
-        }
-
-        list.appendChild(wrap);
-      });
-
-      // wire buttons
-      list.querySelectorAll("button[data-del]").forEach(btn => {
-        btn.onclick = () => {
-          const idx = Number(btn.getAttribute("data-del"));
-          const bank = bankClone();
-          const r = bank.rounds.find(r => r.id === editRoundId);
-          if (!r || !Array.isArray(r.questions)) return;
-          r.questions.splice(idx, 1);
-          setBank(bank);
-          renderEditorRoundSelect();
-          renderEditorList();
-        };
-      });
-      list.querySelectorAll("button[data-up]").forEach(btn => {
-        btn.onclick = () => {
-          const idx = Number(btn.getAttribute("data-up"));
-          const bank = bankClone();
-          const r = bank.rounds.find(r => r.id === editRoundId);
-          if (!r || !Array.isArray(r.questions) || idx <= 0) return;
-          const tmp = r.questions[idx-1]; r.questions[idx-1] = r.questions[idx]; r.questions[idx] = tmp;
-          setBank(bank);
-          renderEditorList();
-        };
-      });
-      list.querySelectorAll("button[data-down]").forEach(btn => {
-        btn.onclick = () => {
-          const idx = Number(btn.getAttribute("data-down"));
-          const bank = bankClone();
-          const r = bank.rounds.find(r => r.id === editRoundId);
-          if (!r || !Array.isArray(r.questions) || idx >= r.questions.length-1) return;
-          const tmp = r.questions[idx+1]; r.questions[idx+1] = r.questions[idx]; r.questions[idx] = tmp;
-          setBank(bank);
-          renderEditorList();
-        };
-      });
-    }
-
-    $("editRoundSelect").onchange = () => {
-      editRoundId = $("editRoundSelect").value;
-      renderEditorList();
-    };
-
-    $("addQA").onclick = () => {
-      const bank = bankClone();
-      const r = bank.rounds.find(r => r.id === editRoundId);
-      if (!r) return;
-      if (r.type !== "qa") return alert("Select a Q&A round first.");
-      r.questions = Array.isArray(r.questions) ? r.questions : [];
-      r.questions.push({ q: "New question…", a: "Answer…" });
-      setBank(bank);
-      renderEditorList();
-    };
-
-    $("addMCQ").onclick = () => {
-      const bank = bankClone();
-      const r = bank.rounds.find(r => r.id === editRoundId);
-      if (!r) return;
-      if (r.type !== "mcq") return alert("Select an MCQ round first.");
-      r.questions = Array.isArray(r.questions) ? r.questions : [];
-      r.questions.push({ q: "New MCQ…", options: ["A", "B", "C", "D"], correctIndex: 0 });
-      setBank(bank);
-      renderEditorList();
-    };
-
-    $("resetBank").onclick = () => {
-      if (!confirm("Reset question bank back to default?")) return;
-      setBank(QUIZ);
-      editRoundId = null;
-      // Keep round dropdown in sync with local editor bank
-      try { renderEditorRoundSelect(); renderEditorList(); } catch (e) {}
-      renderEditorRoundSelect();
-      renderEditorList();
-      alert("Reset.");
-    };
-
-    $("saveBankLocal").onclick = () => {
-      // already saved on every change, but keep a button for confidence
-      setBank(bankClone());
-      renderEditorRoundSelect();
-      renderEditorList();
-      alert("Saved.");
-    };
-
-    // Render editor when opened
-    try {
-      const ed = document.getElementById("editorDetails");
-      if (ed) {
-        ed.addEventListener("toggle", () => {
-          if (ed.open) {
-            renderEditorRoundSelect();
-            renderEditorList();
-          }
-        });
-      }
-    } catch (e) {}
-;
-
-      if (round.type === "qa") {
-        live.answer = qObj.a;
-      } else if (round.type === "mcq") {
-        live.options = qObj.options;
-        live.correctIndex = qObj.correctIndex;
-        live.answer = qObj.options[qObj.correctIndex];
-      }
-
-      await setLiveQuestion(roomId, live);
-    }
-
-
-    // You can replace these later with your real charades list
-    const CHARADES_NAMES = [
-  "Taylor Swift",
-  "Beyoncé",
-  "Ed Sheeran",
-  "Elton John",
-  "James Bond",
-  "Indiana Jones",
-  "Darth Vader",
-  "Mr Bean",
-  "David Brent",
-  "Homer Simpson",
-  "Del Boy",
-  "Joey Tribbiani",
-  "The Grinch",
-  "Santa Claus",
-  "Kevin McCallister",
-  "Rocky Balboa",
-  "Forrest Gump",
-  "Henry VIII",
-  "Napoleon Bonaparte",
-  "Winston Churchill",
-  "Cleopatra",
-  "Abraham Lincoln",
-  "The Joker",
-  "Voldemort",
-  "Thanos",
-  "Austin Powers",
-  "Borat",
-  "Shrek",
-  "Mario",
-  "Scooby-Doo",
-  "Wallace",
-  "The Michelin Man",
-  "Buddy the Elf",
-  "Ebenezer Scrooge",
-  "Rudolph the Red-Nosed Reindeer",
-  "The Snowman",
-  "A Turkey"
-];
-
-    let charadesIndex = 0;
-
-    function renderScores(teams = [], scores = {}) {
-      const box = $("scoreboard");
-      box.innerHTML = "";
-
-      if (!teams.length) {
-        box.innerHTML = "<p class='small'>No teams yet.</p>";
-        $("actorTeam").innerHTML = "";
-        $("awardTeam").innerHTML = "";
-        return;
-      }
-
-      // ✅ Preserve current selections (prevents dropdown resetting to first team)
-      const prevActor = $("actorTeam").value;
-      const prevAward = $("awardTeam").value;
-
-      // Rebuild dropdowns
-      $("actorTeam").innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join("");
-      $("awardTeam").innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join("");
-
-      // ✅ Restore previous selection if still valid
-      if (prevActor && teams.includes(prevActor)) $("actorTeam").value = prevActor;
-      if (prevAward && teams.includes(prevAward)) $("awardTeam").value = prevAward;
-
-      teams.forEach((team) => {
-        const score = Number(scores[team] ?? 0);
-
-        const row = document.createElement("div");
-        row.className = "row";
-        row.style.alignItems = "center";
-
-        row.innerHTML = `
-          <div class="col"><strong>${team}</strong> <span class="small">(${score})</span></div>
-          <div class="col" style="display:flex; gap:8px; justify-content:flex-end;">
-            <button data-d="-2">-2</button>
-            <button data-d="-1">-1</button>
-            <button data-d="1">+1</button>
-            <button data-d="2">+2</button>
-          </div>
-        `;
-
-        row.querySelectorAll("button").forEach((btn) => {
-          btn.onclick = async () => {
-            const delta = Number(btn.getAttribute("data-d"));
-            await changeScore(roomId, team, delta);
-          };
-        });
-
-        box.appendChild(row);
-      });
-    }
-
-    
-    
-    function updateVisibility(data) {
+    function modePill(data){
       const round = data?.game?.round ?? null;
-      const showCharades = round === "charades";
-      const scoresDetails = document.getElementById("scoresDetails");
-      const charadesDetails = document.getElementById("charadesDetails");
-      const buzzSection = document.getElementById("sectionBuzz");
-
-      if (charadesDetails) charadesDetails.open = showCharades;
-      if (scoresDetails) scoresDetails.open = !showCharades;
-      if (buzzSection) buzzSection.classList.toggle("hidden", showCharades);
+      return round === "charades" ? "Mode: Charades" : "Mode: Buzzer";
     }
 
-function renderCharades(data) {
-      const round = data?.game?.round ?? null;
-      const ch = data?.charades ?? null;
-
-      if (round !== "charades" || !ch) {
-        $("charadesInfo").textContent = "Not running.";
-        $("charadesTimer").style.display = "none";
-        $("charadesReveal").style.display = "none";
-        return;
-      }
-
-      $("charadesInfo").textContent = ch.actorTeam
-        ? `Acting team: ${ch.actorTeam}`
-        : "Pick an acting team and press Start.";
-
-      // Timer (always based on latestData — no stale snapshots)
-      $("charadesTimer").style.display = "block";
-      if (ch.running && typeof ch.endsAt === "number") {
-        const remaining = Math.max(0, Math.ceil((ch.endsAt - Date.now()) / 1000));
-        $("charadesTimer").textContent = String(remaining);
-      } else {
-        $("charadesTimer").textContent = "0";
-      }
-
-      // Reveal
-      if (ch.revealed) {
-        $("charadesReveal").style.display = "block";
-        $("charadesReveal").textContent = `Answer: ${ch.person ?? "—"}`;
-      } else {
-        $("charadesReveal").style.display = "none";
-      }
+    function renderTeamsSelect(teams){
+      const sel = $("actorTeam");
+      const list = Array.isArray(teams) ? teams : [];
+      sel.innerHTML = list.map(t => `<option value="${t}">${t}</option>`).join("");
     }
 
-    // Timer tick (updates only display — Firestore is source of truth)
-    setInterval(() => {
-      if (latestData) renderCharades(latestData);
-    }, 200);
+    function renderScores(scores){
+      const body = $("scoresBody");
+      body.innerHTML = "";
+      const entries = Object.entries(scores || {}).sort((a,b)=>b[1]-a[1]);
+      for (const [team, score] of entries){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${team}</td>
+          <td class="right">${Number(score)}</td>
+          <td class="right">
+            <button data-team="${team}" data-d="-1">-1</button>
+            <button data-team="${team}" data-d="1">+1</button>
+            <button data-team="${team}" data-d="2">+2</button>
+          </td>
+        `;
+        body.appendChild(tr);
+      }
+      body.querySelectorAll("button[data-team]").forEach(btn=>{
+        btn.onclick = async () => {
+          if (!roomId) return;
+          const team = btn.getAttribute("data-team");
+          const d = Number(btn.getAttribute("data-d"));
+          await changeScore(roomId, team, d);
+        };
+      });
+    }
+
+    function startTimer(endsAt){
+      if (timerInt) clearInterval(timerInt);
+      const tick = () => {
+        const now = Date.now();
+        const ms = Math.max(0, (endsAt||0) - now);
+        const s = Math.ceil(ms/1000);
+        $("charTimer").textContent = endsAt ? `${s}s` : "—";
+        if (ms <= 0) {
+          clearInterval(timerInt);
+          timerInt = null;
+        }
+      };
+      tick();
+      timerInt = setInterval(tick, 250);
+    }
+
+    function renderCharades(c){
+      const round = latest?.game?.round ?? null;
+      const show = round === "charades";
+      $("charadesDetails").open = show;
+      $("scoresDetails").open = !show;
+      $("modePill").textContent = modePill(latest);
+
+      const endsAt = c?.endsAt ?? null;
+      startTimer(endsAt);
+
+      const revealed = !!c?.revealed;
+      $("charRevealBox").style.display = revealed ? "block" : "none";
+      $("charPerson").textContent = revealed ? (c?.person || "—") : "—";
+    }
+
+    function renderBuzzer(b){
+      const lockedBy = b?.lockedBy ?? null;
+      $("winner").textContent = lockedBy || "—";
+      $("awardHint").textContent = lockedBy ? `Award points to: ${lockedBy}` : "Award points to: (no buzz yet)";
+    }
+
+    async function awardToBuzzWinner(delta){
+      const winner = latest?.buzz?.lockedBy || null;
+      if (!winner) return alert("No team has buzzed in yet.");
+      await changeScore(roomId, winner, delta);
+    }
 
     $("open").onclick = async () => {
       roomId = $("room").value.trim();
-      if (!roomId) {
-        $("status").textContent = "Enter a room code.";
+      if (!roomId) { $("status").textContent = "Enter a room code."; return; }
+
+      $("status").textContent = "Opening room…";
+      try{
+        await ensureRoom(roomId);
+      }catch(e){
+        $("status").textContent = "Failed to create room (check Firebase config / console).";
+        console.error(e);
         return;
       }
 
-      $("status").textContent = "Opening room…";
-      await ensureRoom(roomId);
-
-      $("live").style.display = "block";
+      $("main").style.display = "block";
       $("status").textContent = `Room ready: ${roomId}`;
 
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
-        latestData = data;
-        updateVisibility(data);
-
-        const lockedBy = data?.buzz?.lockedBy ?? null;
-        $("winner").textContent = lockedBy ? lockedBy : "—";
-        const awardEl = document.getElementById("awardTarget");
-        if (awardEl) {
-          awardEl.textContent = lockedBy ? `Award points to: ${lockedBy}` : "Award points to: (no buzz yet)";
-        }
-        $("lockInfo").textContent = lockedBy
-          ? "Buzz is locked. Reset to continue."
-          : "Buzz is open.";
-
-        renderScores(data?.teams || [], data?.scores || {});
-        renderCharades(data);
-          if (reveal) {
-            $("liveAnswer").style.display = "block";
-            $("liveAnswer").textContent = `Answer: ${liveQ.answer ?? "—"}`;
-          } else {
-            $("liveAnswer").style.display = "none";
-          }
-        }
-
-
-        // Helpful default: when charades is active, set award dropdown to acting team
-        if (data?.game?.round === "charades" && data?.charades?.actorTeam) {
-          const actor = data.charades.actorTeam;
-          if ([...$("awardTeam").options].some(o => o.value === actor)) {
-            $("awardTeam").value = actor;
-          }
-        }
+        latest = data || {};
+        renderBuzzer(latest.buzz);
+        renderTeamsSelect(latest.teams);
+        renderScores(latest.scores);
+        renderCharades(latest.charades);
       });
     };
 
-    $("reset").onclick = async () => {
-      if (!roomId) return;
-      await resetBuzz(roomId);
-    };
+    $("resetBuzzBtn").onclick = async () => { if (roomId) await resetBuzz(roomId); };
 
     $("startCharadesBtn").onclick = async () => {
       if (!roomId) return;
-
-      const actorTeam = $("actorTeam").value;
-      const seconds = Number($("charadesSeconds").value || 60);
-      if (!actorTeam) {
-        alert("No teams yet — ask teams to join first.");
-        return;
-      }
-
-      const person = CHARADES_NAMES[charadesIndex % CHARADES_NAMES.length];
-      charadesIndex++;
-
-      await startCharades(roomId, actorTeam, person, seconds);
-
-      // default awarding to the acting team (you can change it)
-      $("awardTeam").value = actorTeam;
+      const team = $("actorTeam").value;
+      const seconds = Number($("charSeconds").value || 60);
+      // pick random person from a built-in list (teams will see it)
+      const people = [
+        "David Attenborough","Taylor Swift","Mr Bean","The Queen (historical)","Albert Einstein",
+        "The Grinch","Darth Vader","Harry Potter","Elsa (Frozen)","Gordon Ramsay",
+        "Donald Trump","Boris Johnson","The Easter Bunny","Santa","A confused penguin"
+      ];
+      const person = people[Math.floor(Math.random()*people.length)];
+      await startCharades(roomId, team, person, seconds);
     };
 
-    $("stopCharadesBtn").onclick = async () => {
-      if (!roomId) return;
-      await stopCharades(roomId);
-    };
+    $("stopCharadesBtn").onclick = async () => { if (roomId) await stopCharades(roomId); };
+    $("revealCharadesBtn").onclick = async () => { if (roomId) await revealCharades(roomId); };
 
-    $("revealCharadesBtn").onclick = async () => {
-      if (!roomId) return;
-      await revealCharades(roomId);
-    };
-      questionIndex = 0;
-      await pushLiveQuestion();
-    };
-      await pushLiveQuestion();
-    };
-      await pushLiveQuestion();
-    };
-      await setReveal(roomId, true);
-    };
-      await setReveal(roomId, false);
-    };
-      await changeScore(roomId, winner, delta);
-    }
-
-
-    // Award points buttons
-    $("awardMinus1").onclick = async () => {
-      if (!roomId) return;
-      const team = $("awardTeam").value;
-      if (!team) return;
-      await changeScore(roomId, team, -1);
-    };
-
-    $("awardPlus1").onclick = async () => {
-      if (!roomId) return;
-      const team = $("awardTeam").value;
-      if (!team) return;
-      await changeScore(roomId, team, 1);
-    };
-
-    $("awardPlus2").onclick = async () => {
-      if (!roomId) return;
-      const team = $("awardTeam").value;
-      if (!team) return;
-      await changeScore(roomId, team, 2);
-    };
+    $("awardMinus1").onclick = async () => { if (roomId) await awardToBuzzWinner(-1); };
+    $("awardPlus1").onclick = async () => { if (roomId) await awardToBuzzWinner(1); };
+    $("awardPlus2").onclick = async () => { if (roomId) await awardToBuzzWinner(2); };
   </script>
 </body>
 </html>

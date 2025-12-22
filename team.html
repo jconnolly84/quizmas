@@ -1,118 +1,126 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Quizmas Team</title>
-  <link rel="stylesheet" href="./app.css" />
-<style>.hidden{display:none !important;}</style>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#0b1020;color:#e9eefc}
+    .wrap{max-width:700px;margin:0 auto;padding:16px}
+    .card{background:#121a33;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin:10px 0}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .col{flex:1;min-width:220px}
+    label{opacity:.85}
+    input,button{font:inherit}
+    input{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0f1627;color:#e9eefc;width:100%}
+    button{padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:#1a2550;color:#e9eefc;cursor:pointer;width:100%}
+    button:hover{filter:brightness(1.05)}
+    .buzz{font-size:1.4rem;font-weight:800;padding:18px;background:#ff2d55;color:white;border:none}
+    .small{font-size:.9rem;opacity:.85}
+    .winner{font-size:1.2rem;font-weight:700}
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Team Buzzer</h1>
+    <h1>🎄 Quizmas – Team</h1>
 
     <div class="card">
       <div class="row">
         <div class="col">
-          <label>Room code</label><br/>
-          <input id="room" placeholder="e.g. quizmas" />
+          <label>Room code</label>
+          <input id="room" placeholder="e.g. quiz1" />
         </div>
         <div class="col">
-          <label>Team name</label><br/>
-          <input id="team" placeholder="e.g. The Sprouts" />
+          <label>Team name</label>
+          <input id="team" placeholder="e.g. The Connollys" />
         </div>
       </div>
-      <button id="join">Join</button>
-      <p class="small" id="status"></p>
+      <div class="row" style="margin-top:10px;">
+        <div class="col"><button id="join">Join room</button></div>
+      </div>
+      <div id="status" class="small" style="margin-top:8px;">Not connected.</div>
     </div>
 
-    <div class="card" id="live" style="display:none;">
-<div class="big" id="teamPrompt">—</div>
-        <div id="teamOptions" class="small" style="margin-top:8px;"></div>
-        <div id="teamReveal" class="small" style="margin-top:10px; display:none;"></div>
+    <div id="main" style="display:none;">
+      <div class="card">
+        <div class="small">Charades (if active)</div>
+        <div class="winner" id="charLine">Waiting…</div>
       </div>
 
-      <div class="big" id="state">Ready</div>
-      <p class="small" id="info"></p>
-      <button class="buzz" id="buzzBtn">BUZZ!</button>
+      <div class="card">
+        <button class="buzz" id="buzzBtn">BUZZ!</button>
+        <div class="small" id="buzzState" style="margin-top:8px;">First team to buzz wins.</div>
+      </div>
+
+      <div class="card">
+        <div class="small">Scores</div>
+        <div id="scores" class="small"></div>
+      </div>
     </div>
   </div>
 
   <script type="module">
-    import { ensureRoom, listenRoom, buzz, registerTeam } from "./common.js";
-    const $ = (id) => document.getElementById(id);
+    import { ensureRoom, listenRoom, registerTeam, buzz } from "./common.js";
 
+    const $ = (id) => document.getElementById(id);
     let roomId = null;
     let teamName = null;
     let unsub = null;
 
+    function renderScores(scores){
+      const el = $("scores");
+      const entries = Object.entries(scores || {}).sort((a,b)=>b[1]-a[1]);
+      el.innerHTML = entries.map(([t,s]) => `${t}: <strong>${s}</strong>`).join("<br/>") || "—";
+    }
+
+    function renderCharades(data){
+      const round = data?.game?.round ?? null;
+      if (round !== "charades") { $("charLine").textContent = "Waiting…"; return; }
+      const c = data?.charades || {};
+      const actor = c.actorTeam || "—";
+      const person = c.person || "—";
+      const revealed = !!c.revealed;
+      if (teamName === actor) {
+        $("charLine").textContent = `You are acting: ${person}`;
+      } else {
+        $("charLine").textContent = revealed ? `Reveal: ${person}` : `Charades running (actor: ${actor})`;
+      }
+    }
+
+    function renderBuzzState(data){
+      const lockedBy = data?.buzz?.lockedBy ?? null;
+      if (!lockedBy) {
+        $("buzzBtn").disabled = false;
+        $("buzzState").textContent = "First team to buzz wins.";
+      } else {
+        $("buzzBtn").disabled = true;
+        $("buzzState").textContent = `Buzz locked by: ${lockedBy}`;
+      }
+    }
+
     $("join").onclick = async () => {
       roomId = $("room").value.trim();
       teamName = $("team").value.trim();
-      if (!roomId || !teamName) {
-        $("status").textContent = "Enter room + team name.";
+      if (!roomId || !teamName) { $("status").textContent = "Enter room + team name."; return; }
+
+      $("status").textContent = "Joining…";
+      try{
+        await ensureRoom(roomId);
+        await registerTeam(roomId, teamName);
+      }catch(e){
+        $("status").textContent = "Join failed (check Firebase config / console).";
+        console.error(e);
         return;
       }
 
-      $("status").textContent = "Joining…";
-      await ensureRoom(roomId);
-      await registerTeam(roomId, teamName);
-
-      $("live").style.display = "block";
-      $("status").textContent = `Joined room: ${roomId}`;
+      $("main").style.display = "block";
+      $("status").textContent = `Joined: ${roomId} as ${teamName}`;
 
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
-        const round = data?.game?.round ?? null;
-
-        // Default buzz UI (works for all rounds)
-        const lockedBy = data?.buzz?.lockedBy ?? null;
-        if (!lockedBy) {
-          $("buzzBtn").disabled = false;
-          $("buzzBtn").textContent = "BUZZ!";
-        } else {
-          $("buzzBtn").disabled = true;
-          $("buzzBtn").textContent = "LOCKED";
-        }
-          if (reveal) {
-            $("teamReveal").style.display = "block";
-            $("teamReveal").textContent = `Answer: ${liveQ.answer ?? "—"}`;
-          } else {
-            $("teamReveal").style.display = "none";
-          }
-        }
-
-
-        // Charades behaviour
-        if (round === "charades") {
-          const ch = data?.charades ?? {};
-          if (ch.actorTeam === teamName) {
-            $("state").textContent = "ACT IT OUT 🎭";
-            $("info").textContent = ch.person ? `Your person: ${ch.person}` : "Waiting for host…";
-            $("buzzBtn").disabled = true; // acting team shouldn't buzz
-            $("buzzBtn").textContent = "ACTING";
-          } else {
-            $("state").textContent = "GUESS!";
-            $("info").textContent = ch.actorTeam ? `Acting team: ${ch.actorTeam}` : "Waiting for host…";
-            // guessing teams can still buzz (optional). Keep enabled if buzz is open.
-          }
-          return;
-        }
-
-        // Normal buzzer feedback (non-charades)
-        if (!lockedBy) {
-          $("state").textContent = "Ready";
-          $("info").textContent = "Buzz is open.";
-          return;
-        }
-
-        if (lockedBy === teamName) {
-          $("state").textContent = "YOU WON ✅";
-          $("info").textContent = "Wait for host to reset.";
-        } else {
-          $("state").textContent = "TOO LATE ⛔";
-          $("info").textContent = `Locked by: ${lockedBy}`;
-        }
+        renderScores(data?.scores);
+        renderCharades(data);
+        renderBuzzState(data);
       });
     };
 
