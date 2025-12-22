@@ -48,6 +48,7 @@
       </div>
 
       <div class="card">
+        <audio id="buzzerAudio" src="buzzer.mp3" preload="auto"></audio>
         <button class="buzz" id="buzzBtn">BUZZ!</button>
         <div class="small" id="buzzState" style="margin-top:8px;">First team to buzz wins.</div>
       </div>
@@ -124,7 +125,34 @@
       });
     };
 
-    $("buzzBtn").onclick = async () => {
+    
+    function playBuzzSound() {
+      const a = document.getElementById("buzzerAudio");
+      if (!a) return;
+      try {
+        a.currentTime = 0;
+        const p = a.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      } catch (e) {}
+    }
+
+    // Prime audio on first user gesture (iOS/Safari policies)
+    document.addEventListener("pointerdown", () => {
+      const a = document.getElementById("buzzerAudio");
+      if (!a) return;
+      try {
+        a.muted = true;
+        const p = a.play();
+        if (p && typeof p.then === "function") {
+          p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
+           .catch(() => { a.pause(); a.currentTime = 0; a.muted = false; });
+        }
+      } catch (e) {}
+    }, { once: true });
+
+$("buzzBtn").onclick = async () => {
+      // play instantly (even if network lag)
+      playBuzzSound();
       if (!roomId || !teamName) return;
       await buzz(roomId, teamName);
     };
