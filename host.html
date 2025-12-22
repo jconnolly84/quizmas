@@ -74,6 +74,8 @@
             <div class="col">
               <label>Actor team</label>
               <select id="actorTeam"></select>
+              <div class="small" style="margin-top:6px;">Award points to:</div>
+              <select id="awardTeam"></select>
             </div>
             <div class="col">
               <label>Seconds</label>
@@ -115,7 +117,7 @@
       resetBuzz,
       changeScore,
       startCharades,
-      stopCharades,
+      clearStage,
       revealCharades
     } from "./common.js";
 
@@ -133,8 +135,15 @@
 
     function renderTeamsSelect(teams){
       const sel = $("actorTeam");
+      const award = $("awardTeam");
       const list = Array.isArray(teams) ? teams : [];
-      sel.innerHTML = list.map(t => `<option value="${t}">${t}</option>`).join("");
+      const curActor = sel.value;
+      const curAward = award ? award.value : "";
+      const opts = list.map(t => `<option value="${t}">${t}</option>`).join("");
+      sel.innerHTML = opts;
+      if (award) award.innerHTML = opts;
+      if (curActor && list.includes(curActor)) sel.value = curActor;
+      if (award && curAward && list.includes(curAward)) award.value = curAward;
     }
 
     function renderScores(scores){
@@ -201,10 +210,10 @@
       $("awardHint").textContent = lockedBy ? `Award points to: ${lockedBy}` : "Award points to: (no buzz yet)";
     }
 
-    async function awardToBuzzWinner(delta){
-      const winner = latest?.buzz?.lockedBy || null;
-      if (!winner) return alert("No team has buzzed in yet.");
-      await changeScore(roomId, winner, delta);
+    async function awardToSelectedTeam(delta){
+      const team = ($("awardTeam")?.value || $("actorTeam")?.value || "").trim();
+      if (!team) return alert("No team selected.");
+      await changeScore(roomId, team, delta);
     }
 
     $("open").onclick = async () => {
@@ -249,12 +258,12 @@
       await startCharades(roomId, team, person, seconds);
     };
 
-    $("stopCharadesBtn").onclick = async () => { if (roomId) await stopCharades(roomId); };
+    $("stopCharadesBtn").onclick = async () => { if (roomId) await clearStage(roomId); };
     $("revealCharadesBtn").onclick = async () => { if (roomId) await revealCharades(roomId); };
 
-    $("awardMinus1").onclick = async () => { if (roomId) await awardToBuzzWinner(-1); };
-    $("awardPlus1").onclick = async () => { if (roomId) await awardToBuzzWinner(1); };
-    $("awardPlus2").onclick = async () => { if (roomId) await awardToBuzzWinner(2); };
+    $("awardMinus1").onclick = async () => { if (roomId) await awardToSelectedTeam(-1); };
+    $("awardPlus1").onclick = async () => { if (roomId) await awardToSelectedTeam(1); };
+    $("awardPlus2").onclick = async () => { if (roomId) await awardToSelectedTeam(2); };
   </script>
 </body>
 </html>
