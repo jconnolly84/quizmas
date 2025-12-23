@@ -80,6 +80,7 @@
 
     let humShown = false;
     let humKey = null;
+    let lastData = null;
 
     function renderStage(data){
       const round = data?.game?.round ?? null;
@@ -173,6 +174,7 @@
 
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
+        lastData = data;
         renderScores(data?.scores);
         renderStage(data);
         renderBuzzState(data);
@@ -196,12 +198,14 @@
       humShown = true;
       $("humRevealBtn").style.display = "none";
       $("humHideBtn").style.display = "block";
+      if (lastData) renderStage(lastData);
     };
 
     $("humHideBtn").onclick = () => {
       humShown = false;
       $("humRevealBtn").style.display = "block";
       $("humHideBtn").style.display = "none";
+      if (lastData) renderStage(lastData);
     };
 
 document.addEventListener("pointerdown", () => {
