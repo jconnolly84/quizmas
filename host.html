@@ -107,6 +107,49 @@
           </div>
         </div>
       </details>
+
+
+      <details id="humDetails">
+        <summary><strong>Hum the Tune</strong> <span class="small">(tap to collapse)</span></summary>
+        <div class="card">
+          <div class="row">
+            <div class="col">
+              <label>Hummer team</label>
+              <select id="hummerTeam"></select>
+              <div class="small" style="margin-top:6px;">Award points to:</div>
+              <select id="humAwardTeam"></select>
+            </div>
+            <div class="col">
+              <label>Seconds</label>
+              <input id="humSeconds" type="number" min="10" value="60"/>
+            </div>
+            <div class="col" style="display:flex;gap:10px;justify-content:flex-end;align-items:flex-end;">
+              <button id="startHumBtn">Start</button>
+              <button id="stopHumBtn">Stop</button>
+              <button id="revealHumBtn">Reveal</button>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="col">
+              <div class="small">Timer</div>
+              <div class="winner" id="humTimer">—</div>
+              <div class="small">Song is hidden from host until Reveal.</div>
+            </div>
+            <div class="col right">
+              <button id="humAwardMinus1">-1</button>
+              <button id="humAwardPlus1">+1</button>
+              <button id="humAwardPlus2">+2</button>
+            </div>
+          </div>
+
+          <div id="humRevealBox" class="card" style="display:none;margin-top:10px;background:#0f1627;">
+            <div class="small">Reveal</div>
+            <div class="winner" id="humSong">—</div>
+          </div>
+        </div>
+      </details>
+
     </div>
   </div>
 
@@ -118,7 +161,10 @@
       changeScore,
       startCharades,
       clearStage,
-      revealCharades
+      revealCharades,
+      startHum,
+      stopHum,
+      revealHum
     } from "./common.js";
 
     const $ = (id) => document.getElementById(id);
@@ -130,20 +176,27 @@
 
     function modePill(data){
       const round = data?.game?.round ?? null;
-      return round === "charades" ? "Mode: Charades" : "Mode: Buzzer";
+      if (round === "charades") return "Mode: Charades";
+      if (round === "hum") return "Mode: Hum the Tune";
+      if (round === "questions") return "Mode: Questions";
+      return "Mode: Buzzer";
     }
 
     function renderTeamsSelect(teams){
-      const sel = $("actorTeam");
-      const award = $("awardTeam");
       const list = Array.isArray(teams) ? teams : [];
-      const curActor = sel.value;
-      const curAward = award ? award.value : "";
-      const opts = list.map(t => `<option value="${t}">${t}</option>`).join("");
-      sel.innerHTML = opts;
-      if (award) award.innerHTML = opts;
-      if (curActor && list.includes(curActor)) sel.value = curActor;
-      if (award && curAward && list.includes(curAward)) award.value = curAward;
+
+      const bindSelect = (id) => {
+        const el = $(id);
+        if (!el) return;
+        const cur = el.value;
+        el.innerHTML = list.map(t => `<option value="${t}">${t}</option>`).join("");
+        if (cur && list.includes(cur)) el.value = cur;
+      };
+
+      bindSelect("actorTeam");
+      bindSelect("awardTeam");
+      bindSelect("hummerTeam");
+      bindSelect("humAwardTeam");
     }
 
     function renderScores(scores){
@@ -173,13 +226,13 @@
       });
     }
 
-    function startTimer(endsAt){
+    function startTimer(elId, endsAt){
       if (timerInt) clearInterval(timerInt);
       const tick = () => {
         const now = Date.now();
         const ms = Math.max(0, (endsAt||0) - now);
         const s = Math.ceil(ms/1000);
-        $("charTimer").textContent = endsAt ? `${s}s` : "—";
+        $(elId).textContent = endsAt ? `${s}s` : "—";
         if (ms <= 0) {
           clearInterval(timerInt);
           timerInt = null;
@@ -188,21 +241,56 @@
       tick();
       timerInt = setInterval(tick, 250);
     }
+      };
+      tick();
+      timerInt = setInterval(tick, 250);
+    }
 
     function renderCharades(c){
       const round = latest?.game?.round ?? null;
       const show = round === "charades";
-      $("charadesDetails").open = show;
-      $("scoresDetails").open = !show;
-      $("modePill").textContent = modePill(latest);
 
       const endsAt = c?.endsAt ?? null;
-      startTimer(endsAt);
+      startTimer("charTimer", endsAt);
 
       const revealed = !!c?.revealed;
       $("charRevealBox").style.display = revealed ? "block" : "none";
       $("charPerson").textContent = revealed ? (c?.person || "—") : "—";
     }
+
+
+    function renderHum(h){
+      const round = latest?.game?.round ?? null;
+      const show = round === "hum";
+
+      $("humDetails").open = show;
+
+      const endsAt = h?.endsAt ?? null;
+      startTimer("humTimer", endsAt);
+
+      const revealed = !!h?.revealed;
+      $("humRevealBox").style.display = revealed ? "block" : "none";
+      $("humSong").textContent = revealed ? (h?.song || "—") : "—";
+    }
+
+    function renderStageToggles(){
+      const round = latest?.game?.round ?? null;
+
+      // Default: show scores, collapse stage panels
+      $("scoresDetails").open = true;
+      $("charadesDetails").open = false;
+      $("humDetails").open = false;
+
+      if (round === "charades") {
+        $("scoresDetails").open = false;
+        $("charadesDetails").open = true;
+      } else if (round === "hum") {
+        $("scoresDetails").open = false;
+        $("humDetails").open = true;
+      }
+      $("modePill").textContent = modePill(latest);
+    }
+
 
     function renderBuzzer(b){
       const lockedBy = b?.lockedBy ?? null;
@@ -215,6 +303,14 @@
       if (!team) return alert("No team selected.");
       await changeScore(roomId, team, delta);
     }
+
+
+    async function awardToHumSelectedTeam(delta){
+      const team = ($("humAwardTeam")?.value || $("hummerTeam")?.value || "").trim();
+      if (!team) return alert("No team selected.");
+      await changeScore(roomId, team, delta);
+    }
+
 
     $("open").onclick = async () => {
       roomId = $("room").value.trim();
@@ -238,7 +334,9 @@
         renderBuzzer(latest.buzz);
         renderTeamsSelect(latest.teams);
         renderScores(latest.scores);
+        renderStageToggles();
         renderCharades(latest.charades);
+        renderHum(latest.hum);
       });
     };
 
@@ -260,6 +358,41 @@
 
     $("stopCharadesBtn").onclick = async () => { if (roomId) await clearStage(roomId); };
     $("revealCharadesBtn").onclick = async () => { if (roomId) await revealCharades(roomId); };
+
+
+    const HUM_SONGS = [
+      "Last Christmas — Wham!",
+      "All I Want for Christmas Is You — Mariah Carey",
+      "Fairytale of New York — The Pogues",
+      "Merry Xmas Everybody — Slade",
+      "Driving Home for Christmas — Chris Rea",
+      "Jingle Bells — Traditional",
+      "Santa Tell Me — Ariana Grande",
+      "Rockin’ Around the Christmas Tree — Brenda Lee",
+      "Mr Brightside — The Killers",
+      "Wonderwall — Oasis",
+      "Bohemian Rhapsody — Queen",
+      "Sweet Caroline — Neil Diamond",
+      "Seven Nation Army — The White Stripes",
+      "Billie Jean — Michael Jackson",
+      "Dancing Queen — ABBA"
+    ];
+
+    $("startHumBtn").onclick = async () => {
+      if (!roomId) return;
+      const team = $("hummerTeam").value;
+      const seconds = Number($("humSeconds").value || 60);
+      const song = HUM_SONGS[Math.floor(Math.random()*HUM_SONGS.length)];
+      await startHum(roomId, team, song, seconds);
+    };
+
+    $("stopHumBtn").onclick = async () => { if (roomId) await clearStage(roomId); };
+    $("revealHumBtn").onclick = async () => { if (roomId) await revealHum(roomId); };
+
+    $("humAwardMinus1").onclick = async () => { if (roomId) await awardToHumSelectedTeam(-1); };
+    $("humAwardPlus1").onclick = async () => { if (roomId) await awardToHumSelectedTeam(1); };
+    $("humAwardPlus2").onclick = async () => { if (roomId) await awardToHumSelectedTeam(2); };
+
 
     $("awardMinus1").onclick = async () => { if (roomId) await awardToSelectedTeam(-1); };
     $("awardPlus1").onclick = async () => { if (roomId) await awardToSelectedTeam(1); };

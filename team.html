@@ -43,8 +43,12 @@
 
     <div id="main" style="display:none;">
       <div class="card">
-        <div class="small">Charades (if active)</div>
-        <div class="winner" id="charLine">Waiting…</div>
+        <div class="small">Stage (if active)</div>
+        <div class="winner" id="stageLine">Waiting…</div>
+        <div id="stageControls" style="margin-top:10px;display:none;">
+          <button id="humRevealBtn" style="margin-bottom:8px;">READY – SHOW SONG</button>
+          <button id="humHideBtn" style="display:none;">Hide Song</button>
+        </div>
       </div>
 
       <div class="card">
@@ -74,17 +78,67 @@
       el.innerHTML = entries.map(([t,s]) => `${t}: <strong>${s}</strong>`).join("<br/>") || "—";
     }
 
-    function renderCharades(data){
+    let humShown = false;
+    let humKey = null;
+
+    function renderStage(data){
       const round = data?.game?.round ?? null;
-      if (round !== "charades") { $("charLine").textContent = "Waiting…"; return; }
-      const c = data?.charades || {};
-      const actor = c.actorTeam || "—";
-      const person = c.person || "—";
-      const revealed = !!c.revealed;
-      if (teamName === actor) {
-        $("charLine").textContent = `You are acting: ${person}`;
-      } else {
-        $("charLine").textContent = revealed ? `Reveal: ${person}` : `Charades running (actor: ${actor})`;
+
+      // Reset local hum reveal when a new hum round starts
+      const h = data?.hum || {};
+      const newKey = round === "hum" ? String(h?.endsAt ?? "") + "|" + String(h?.song ?? "") : null;
+      if (newKey !== humKey) {
+        humKey = newKey;
+        humShown = false;
+        $("humHideBtn").style.display = "none";
+      }
+
+      $("stageControls").style.display = "none";
+      $("humRevealBtn").style.display = "none";
+
+      // HUM THE TUNE
+      if (round === "hum") {
+        const hummer = h?.hummerTeam || "—";
+        const revealed = !!h?.revealed;
+        const song = h?.song || "—";
+
+        if (teamName === hummer) {
+          $("stageControls").style.display = "block";
+          $("humRevealBtn").style.display = humShown ? "none" : "block";
+          $("humHideBtn").style.display = humShown ? "block" : "none";
+
+          if (!humShown) {
+            $("stageLine").textContent = `Hum the Tune: Pass device to the HUMMER (no lyrics).`;
+          } else {
+            $("stageLine").textContent = `🎶 YOUR SONG: ${song}`;
+          }
+        } else {
+          $("stageLine").textContent = revealed
+            ? `Reveal: ${song}`
+            : `Hum the Tune running (hummer team: ${hummer})`;
+        }
+        return;
+      }
+
+      // CHARADES
+      if (round === "charades") {
+        const c = data?.charades || {};
+        const actor = c.actorTeam || "—";
+        const person = c.person || "—";
+        const revealed = !!c.revealed;
+
+        if (teamName === actor) {
+          $("stageLine").textContent = `You are acting: ${person}`;
+        } else {
+          $("stageLine").textContent = revealed ? `Reveal: ${person}` : `Charades running (actor: ${actor})`;
+        }
+        return;
+      }
+
+      // Default
+      $("stageLine").textContent = "Waiting…";
+    } else {
+        $("stageLine").textContent = revealed ? `Reveal: ${person}` : `Charades running (actor: ${actor})`;
       }
     }
 
@@ -120,7 +174,7 @@
       if (unsub) unsub();
       unsub = listenRoom(roomId, (data) => {
         renderScores(data?.scores);
-        renderCharades(data);
+        renderStage(data);
         renderBuzzState(data);
       });
     };
@@ -137,7 +191,20 @@
     }
 
     // Prime audio on first user gesture (iOS/Safari policies)
-    document.addEventListener("pointerdown", () => {
+    
+    $("humRevealBtn").onclick = () => {
+      humShown = true;
+      $("humRevealBtn").style.display = "none";
+      $("humHideBtn").style.display = "block";
+    };
+
+    $("humHideBtn").onclick = () => {
+      humShown = false;
+      $("humRevealBtn").style.display = "block";
+      $("humHideBtn").style.display = "none";
+    };
+
+document.addEventListener("pointerdown", () => {
       const a = document.getElementById("buzzerAudio");
       if (!a) return;
       try {

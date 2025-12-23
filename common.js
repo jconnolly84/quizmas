@@ -52,6 +52,15 @@ export async function ensureRoom(roomId) {
         endsAt: null,
         running: false,
         revealed: false
+      },
+
+      // Hum the Tune state
+      hum: {
+        hummerTeam: null,
+        song: null, // string (e.g. "Jingle Bells — Traditional")
+        endsAt: null,
+        running: false,
+        revealed: false
       }
     });
     return;
@@ -70,6 +79,9 @@ export async function ensureRoom(roomId) {
 
   if (!data.charades) {
     patch.charades = { actorTeam: null, person: null, endsAt: null, running: false, revealed: false };
+  }
+  if (!data.hum) {
+    patch.hum = { hummerTeam: null, song: null, endsAt: null, running: false, revealed: false };
   }
 
   if (Object.keys(patch).length) {
@@ -162,8 +174,9 @@ export async function setLiveQuestion(roomId, live) {
     reveal: false,
     game: { round: "questions", index: Number(live?.index ?? 0), reveal: false },
 
-    // Clear any previous charades state so devices switch cleanly
+    // Clear any previous stage state so devices switch cleanly
     charades: { actorTeam: null, person: null, endsAt: null, running: false, revealed: false },
+    hum: { hummerTeam: null, song: null, endsAt: null, running: false, revealed: false },
 
     // Reset buzzer for the question
     "buzz.lockedBy": null,
@@ -194,6 +207,9 @@ export async function startCharades(roomId, actorTeam, person, seconds) {
       revealed: false
     },
 
+    // Clear hum state so devices switch cleanly
+    hum: { hummerTeam: null, song: null, endsAt: null, running: false, revealed: false },
+
     // Clear buzzer for this round
     "buzz.lockedBy": null,
     "buzz.lockedAt": null
@@ -208,6 +224,41 @@ export async function revealCharades(roomId) {
   await updateDoc(roomRef(roomId), { "charades.revealed": true, "charades.running": false });
 }
 
+
+/**
+ * HUM THE TUNE: start and take control of the stage.
+ */
+export async function startHum(roomId, hummerTeam, song, seconds) {
+  await updateDoc(roomRef(roomId), {
+    game: { round: "hum", index: 0, reveal: false },
+
+    // Clear other stage content
+    live: null,
+    reveal: false,
+    charades: { actorTeam: null, person: null, endsAt: null, running: false, revealed: false },
+
+    hum: {
+      hummerTeam,
+      song,
+      endsAt: Date.now() + Number(seconds) * 1000,
+      running: true,
+      revealed: false
+    },
+
+    // Clear buzzer for this round
+    "buzz.lockedBy": null,
+    "buzz.lockedAt": null
+  });
+}
+
+export async function stopHum(roomId) {
+  await updateDoc(roomRef(roomId), { "hum.running": false });
+}
+
+export async function revealHum(roomId) {
+  await updateDoc(roomRef(roomId), { "hum.revealed": true, "hum.running": false });
+}
+
 /**
  * Clears the stage and returns everyone to buzzer-only mode.
  */
@@ -217,6 +268,7 @@ export async function clearStage(roomId) {
     reveal: false,
     game: { round: null, index: 0, reveal: false },
     charades: { actorTeam: null, person: null, endsAt: null, running: false, revealed: false },
+    hum: { hummerTeam: null, song: null, endsAt: null, running: false, revealed: false },
     "buzz.lockedBy": null,
     "buzz.lockedAt": null
   });
