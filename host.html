@@ -173,7 +173,7 @@
     let roomId = null;
     let unsub = null;
     let latest = null;
-    let timerInt = null;
+    const timerInts = {};
 
     function modePill(data){
       const round = data?.game?.round ?? null;
@@ -228,16 +228,27 @@
     }
 
     function startTimer(elId, endsAt){
-      if (timerInt) clearInterval(timerInt);
+      // keep separate intervals per element so one round can't kill another
+      if (timerInts[elId]) {
+        clearInterval(timerInts[elId]);
+        timerInts[elId] = null;
+      }
+
       const tick = () => {
         const now = Date.now();
-        const ms = Math.max(0, (endsAt||0) - now);
-        const s = Math.ceil(ms/1000);
+        const ms = Math.max(0, (endsAt || 0) - now);
+        const s = Math.ceil(ms / 1000);
         $(elId).textContent = endsAt ? `${s}s` : "—";
-        if (ms <= 0) {
-          clearInterval(timerInt);
-          timerInt = null;
+        if (!endsAt || ms <= 0) {
+          if (timerInts[elId]) clearInterval(timerInts[elId]);
+          timerInts[elId] = null;
         }
+      };
+
+      tick();
+      if (endsAt) timerInts[elId] = setInterval(tick, 250);
+    }
+
       };
       tick();
       timerInt = setInterval(tick, 250);
