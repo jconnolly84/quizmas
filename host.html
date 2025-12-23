@@ -173,6 +173,23 @@
 
     const $ = (id) => document.getElementById(id);
 
+    // Surface runtime errors on-screen (helps when buttons "do nothing")
+    window.addEventListener("error", (ev) => {
+      try {
+        const msg = ev?.error?.message || ev?.message || String(ev);
+        const el = document.getElementById("status");
+        if (el) el.textContent = "JS error: " + msg;
+      } catch (_) {}
+    });
+    window.addEventListener("unhandledrejection", (ev) => {
+      try {
+        const msg = ev?.reason?.message || String(ev?.reason || ev);
+        const el = document.getElementById("status");
+        if (el) el.textContent = "Promise error: " + msg;
+      } catch (_) {}
+    });
+
+
     const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
 
     let roomId = null;
@@ -338,7 +355,7 @@
       try{
         await ensureRoom(roomId);
       }catch(e){
-        $("status").textContent = "Failed to create room (check Firebase config / console).";
+        $("status").textContent = "Failed to create room: " + (e?.message || String(e));
         console.error(e);
         return;
       }
