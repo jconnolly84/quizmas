@@ -126,8 +126,8 @@
             <div class="col" style="display:flex;gap:10px;justify-content:flex-end;align-items:flex-end;">
               <button id="startHumBtn">Start</button>
               <button id="stopHumBtn">Stop</button>
-              <button id="revealHum,
-      resetHumPoolBtn">Reveal</button>
+              <button id="revealHumBtn">Reveal</button>
+              <button id="resetHumPoolBtn" title="Allow songs to repeat once the pool resets">Reset Pool</button>
             </div>
           </div>
 
@@ -172,6 +172,8 @@
     } from "./common.js";
 
     const $ = (id) => document.getElementById(id);
+
+    const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
 
     let roomId = null;
     let latestRoom = null;
@@ -528,9 +530,8 @@
     };
 
     $("stopHumBtn").onclick = async () => { if (roomId) await stopHum(roomId); };
-    $("revealHum,
-      resetHumPoolBtn").onclick = async () => { if (roomId) await revealHum,
-      resetHumPool(roomId); };
+    on("revealHumBtn", async () => { if (roomId) await revealHum(roomId); });
+    on("resetHumPoolBtn", async () => { if (roomId) await resetHumPool(roomId); });
 
     $("humAwardMinus1").onclick = async () => { if (roomId) await awardToHumSelectedTeam(-1); };
     $("humAwardPlus1").onclick = async () => { if (roomId) await awardToHumSelectedTeam(1); };
