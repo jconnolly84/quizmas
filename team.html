@@ -93,6 +93,7 @@
         $("humHideBtn").style.display = "none";
       }
 
+      // Hide stage controls by default
       $("stageControls").style.display = "none";
       $("humRevealBtn").style.display = "none";
 
@@ -108,7 +109,7 @@
           $("humHideBtn").style.display = humShown ? "block" : "none";
 
           if (!humShown) {
-            $("stageLine").textContent = `Hum the Tune: Pass device to the HUMMER (no lyrics).`;
+            $("stageLine").textContent = "Hum the Tune: Pass device to the HUMMER (no lyrics).";
           } else {
             $("stageLine").textContent = `🎶 YOUR SONG: ${song}`;
           }
@@ -130,16 +131,15 @@
         if (teamName === actor) {
           $("stageLine").textContent = `You are acting: ${person}`;
         } else {
-          $("stageLine").textContent = revealed ? `Reveal: ${person}` : `Charades running (actor: ${actor})`;
+          $("stageLine").textContent = revealed
+            ? `Reveal: ${person}`
+            : `Charades running (actor: ${actor})`;
         }
         return;
       }
 
       // Default
       $("stageLine").textContent = "Waiting…";
-    } else {
-        $("stageLine").textContent = revealed ? `Reveal: ${person}` : `Charades running (actor: ${actor})`;
-      }
     }
 
     function renderBuzzState(data){
