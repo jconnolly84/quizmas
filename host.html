@@ -160,6 +160,7 @@
       resetBuzz,
       changeScore,
       startCharades,
+      stopCharades,
       clearStage,
       revealCharades,
       startHum,
@@ -349,11 +350,33 @@
         "Donald Trump","Boris Johnson","The Easter Bunny","Santa","A confused penguin"
       ];
       const person = people[Math.floor(Math.random()*people.length)];
-      await startCharades(roomId, team, person, seconds);
+      try {
+        await startCharades(roomId, team, person, seconds);
+      } catch (e) {
+        console.error(e);
+        $("status").textContent = `Charades start failed: ${e?.message || e}`;
+      }
     };
 
-    $("stopCharadesBtn").onclick = async () => { if (roomId) await clearStage(roomId); };
-    $("revealCharadesBtn").onclick = async () => { if (roomId) await revealCharades(roomId); };
+    $("stopCharadesBtn").onclick = async () => {
+      if (!roomId) return;
+      try {
+        await stopCharades(roomId);
+      } catch (e) {
+        console.error(e);
+        $("status").textContent = `Charades stop failed: ${e?.message || e}`;
+      }
+    };
+
+    $("revealCharadesBtn").onclick = async () => {
+      if (!roomId) return;
+      try {
+        await revealCharades(roomId);
+      } catch (e) {
+        console.error(e);
+        $("status").textContent = `Charades reveal failed: ${e?.message || e}`;
+      }
+    };
 
 
     const HUM_SONGS = [
@@ -382,7 +405,7 @@
       await startHum(roomId, team, song, seconds);
     };
 
-    $("stopHumBtn").onclick = async () => { if (roomId) await clearStage(roomId); };
+    $("stopHumBtn").onclick = async () => { if (roomId) await stopHum(roomId); };
     $("revealHumBtn").onclick = async () => { if (roomId) await revealHum(roomId); };
 
     $("humAwardMinus1").onclick = async () => { if (roomId) await awardToHumSelectedTeam(-1); };

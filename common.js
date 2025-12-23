@@ -261,6 +261,7 @@ export async function revealHum(roomId) {
 
 /**
  * Clears the stage and returns everyone to buzzer-only mode.
+ * Keeps teams/scores intact.
  */
 export async function clearStage(roomId) {
   await updateDoc(roomRef(roomId), {
