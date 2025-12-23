@@ -196,9 +196,17 @@
         const el = $(id);
         if (!el) return;
         const cur = el.value;
-        el.innerHTML = list.map(t => `<option value="${t}">${t}</option>`).join("");
+        el.innerHTML = list.length
+          ? list.map(t => `<option value="${t}">${t}</option>`).join("")
+          : `<option value="">(no teams yet)</option>`;
         if (cur && list.includes(cur)) el.value = cur;
       };
+
+      // These selects exist across the 3 host sections (Buzzer / Charades / Hum)
+      bindSelect("awardTeam");      // general points award
+      bindSelect("actorTeam");      // charades actor team picker
+      bindSelect("humAwardTeam");   // hum points award team picker
+    };
 
       bindSelect("actorTeam");
       bindSelect("awardTeam");
