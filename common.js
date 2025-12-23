@@ -217,11 +217,13 @@ export async function startCharades(roomId, actorTeam, person, seconds) {
 }
 
 export async function stopCharades(roomId) {
-  await updateDoc(roomRef(roomId), { "charades.running": false });
+  // Stop the round and freeze the timer immediately
+  await updateDoc(roomRef(roomId), { "charades.running": false, "charades.endsAt": null });
 }
 
 export async function revealCharades(roomId) {
-  await updateDoc(roomRef(roomId), { "charades.revealed": true, "charades.running": false });
+  // Reveal and stop; also clear endsAt so host/team UIs stop counting
+  await updateDoc(roomRef(roomId), { "charades.revealed": true, "charades.running": false, "charades.endsAt": null });
 }
 
 
@@ -252,11 +254,13 @@ export async function startHum(roomId, hummerTeam, song, seconds) {
 }
 
 export async function stopHum(roomId) {
-  await updateDoc(roomRef(roomId), { "hum.running": false });
+  // Stop the round and freeze the timer immediately
+  await updateDoc(roomRef(roomId), { "hum.running": false, "hum.endsAt": null });
 }
 
 export async function revealHum(roomId) {
-  await updateDoc(roomRef(roomId), { "hum.revealed": true, "hum.running": false });
+  // Reveal and stop; also clear endsAt so host/team UIs stop counting
+  await updateDoc(roomRef(roomId), { "hum.revealed": true, "hum.running": false, "hum.endsAt": null });
 }
 
 /**
