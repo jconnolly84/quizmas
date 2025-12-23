@@ -9,7 +9,8 @@ import {
   updateDoc,
   onSnapshot,
   serverTimestamp,
-  runTransaction
+  runTransaction,
+  arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 const app = initializeApp(firebaseConfig);
@@ -51,7 +52,8 @@ export async function ensureRoom(roomId) {
         person: null,
         endsAt: null,
         running: false,
-        revealed: false
+        revealed: false,
+        used: []
       },
 
       // Hum the Tune state
@@ -60,7 +62,8 @@ export async function ensureRoom(roomId) {
         song: null, // string (e.g. "Jingle Bells — Traditional")
         endsAt: null,
         running: false,
-        revealed: false
+        revealed: false,
+        used: []
       }
     });
     return;
@@ -78,10 +81,10 @@ export async function ensureRoom(roomId) {
   if (data.reveal === undefined) patch.reveal = false;
 
   if (!data.charades) {
-    patch.charades = { actorTeam: null, person: null, endsAt: null, running: false, revealed: false };
+    patch.charades = { actorTeam: null, person: null, endsAt: null, running: false, revealed: false, used: [] };
   }
   if (!data.hum) {
-    patch.hum = { hummerTeam: null, song: null, endsAt: null, running: false, revealed: false };
+    patch.hum = { hummerTeam: null, song: null, endsAt: null, running: false, revealed: false, used: [] };
   }
 
   if (Object.keys(patch).length) {
@@ -111,7 +114,8 @@ export async function resetBuzz(roomId) {
  */
 export async function buzz(roomId, teamName) {
   const ref = roomRef(roomId);
-  await runTransaction(db, async (tx) => {
+  await runTransaction,
+  arrayUnion(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("Room missing");
 
@@ -131,7 +135,8 @@ export async function buzz(roomId, teamName) {
 export async function registerTeam(roomId, teamName) {
   const ref = roomRef(roomId);
 
-  await runTransaction(db, async (tx) => {
+  await runTransaction,
+  arrayUnion(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("Room missing");
 
@@ -152,7 +157,8 @@ export async function registerTeam(roomId, teamName) {
 export async function changeScore(roomId, teamName, delta) {
   const ref = roomRef(roomId);
 
-  await runTransaction(db, async (tx) => {
+  await runTransaction,
+  arrayUnion(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("Room missing");
 
@@ -199,16 +205,19 @@ export async function startCharades(roomId, actorTeam, person, seconds) {
     live: null,
     reveal: false,
 
-    charades: {
-      actorTeam,
-      person,
-      endsAt: Date.now() + Number(seconds) * 1000,
-      running: true,
-      revealed: false
-    },
+    "charades.actorTeam": actorTeam,
+    "charades.person": person,
+    "charades.endsAt": Date.now() + Number(seconds) * 1000,
+    "charades.running": true,
+    "charades.revealed": false,
+    "charades.used": arrayUnion(person),
 
-    // Clear hum state so devices switch cleanly
-    hum: { hummerTeam: null, song: null, endsAt: null, running: false, revealed: false },
+    // Clear hum state so devices switch cleanly (but keep hum.used history)
+    "hum.hummerTeam": null,
+    "hum.song": null,
+    "hum.endsAt": null,
+    "hum.running": false,
+    "hum.revealed": false,
 
     // Clear buzzer for this round
     "buzz.lockedBy": null,
@@ -272,9 +281,33 @@ export async function clearStage(roomId) {
     live: null,
     reveal: false,
     game: { round: null, index: 0, reveal: false },
-    charades: { actorTeam: null, person: null, endsAt: null, running: false, revealed: false },
-    hum: { hummerTeam: null, song: null, endsAt: null, running: false, revealed: false },
+
+    // Reset round state but keep the per-room history (charades.used / hum.used)
+    "charades.actorTeam": null,
+    "charades.person": null,
+    "charades.endsAt": null,
+    "charades.running": false,
+    "charades.revealed": false,
+
+    "hum.hummerTeam": null,
+    "hum.song": null,
+    "hum.endsAt": null,
+    "hum.running": false,
+    "hum.revealed": false,
+
     "buzz.lockedBy": null,
     "buzz.lockedAt": null
   });
+}
+
+
+/**
+ * Optional: reset the 'used' history for the room (only if you ever exhaust the lists).
+ */
+export async function resetCharadesPool(roomId) {
+  await updateDoc(roomRef(roomId), { "charades.used": [] });
+}
+
+export async function resetHumPool(roomId) {
+  await updateDoc(roomRef(roomId), { "hum.used": [] });
 }

@@ -126,7 +126,8 @@
             <div class="col" style="display:flex;gap:10px;justify-content:flex-end;align-items:flex-end;">
               <button id="startHumBtn">Start</button>
               <button id="stopHumBtn">Stop</button>
-              <button id="revealHumBtn">Reveal</button>
+              <button id="revealHum,
+      resetHumPoolBtn">Reveal</button>
             </div>
           </div>
 
@@ -163,14 +164,17 @@
       stopCharades,
       clearStage,
       revealCharades,
+      resetCharadesPool,
       startHum,
       stopHum,
-      revealHum
+      revealHum,
+      resetHumPool
     } from "./common.js";
 
     const $ = (id) => document.getElementById(id);
 
     let roomId = null;
+    let latestRoom = null;
     let unsub = null;
     let latest = null;
     const timerInts = {};
@@ -352,11 +356,81 @@
       const seconds = Number($("charSeconds").value || 60);
       // pick random person from a built-in list (teams will see it)
       const people = [
-        "David Attenborough","Taylor Swift","Mr Bean","The Queen (historical)","Albert Einstein",
-        "The Grinch","Darth Vader","Harry Potter","Elsa (Frozen)","Gordon Ramsay",
-        "Donald Trump","Boris Johnson","The Easter Bunny","Santa","A confused penguin"
+        "David Attenborough",
+        "Taylor Swift",
+        "Mr Bean",
+        "Albert Einstein",
+        "The Grinch",
+        "Darth Vader",
+        "Harry Potter",
+        "Elsa (Frozen)",
+        "Gordon Ramsay",
+        "Spider-Man",
+        "Winnie the Pooh",
+        "Donald Trump",
+        "Boris Johnson",
+        "Santa",
+        "A confused penguin",
+        "Shrek",
+        "Batman",
+        "Indiana Jones",
+        "James Bond",
+        "Sherlock Holmes",
+        "Homer Simpson",
+        "Bart Simpson",
+        "Mario",
+        "Sonic the Hedgehog",
+        "Yoda",
+        "Chewbacca",
+        "Gollum",
+        "Katniss Everdeen",
+        "Wednesday Addams",
+        "Barbie",
+        "Ken",
+        "Dobby the house-elf",
+        "The Joker",
+        "Gru (Despicable Me)",
+        "Minion",
+        "Paddington Bear",
+        "Wallace & Gromit",
+        "The Doctor (Doctor Who)",
+        "Darth Maul",
+        "Loki",
+        "Thor",
+        "Captain Jack Sparrow",
+        "Jack Skellington",
+        "The Snowman (Raymond Briggs)",
+        "Buddy the Elf",
+        "Kevin McCallister",
+        "Scrooge",
+        "The Ghost of Christmas Present",
+        "A Christmas turkey",
+        "A reindeer",
+        "Frosty the Snowman",
+        "An awkward Christmas family hug",
+        "Putting up Christmas lights",
+        "Burning the Christmas dinner",
+        "Opening socks for the 5th year running",
+        "Building a snowman",
+        "Carol singing badly",
+        "Wrapping a present with too much tape",
+        "Stepping on Lego",
+        "Trying to untangle headphones",
+        "Searching for the TV remote",
+        "Doing a victory dance",
+        "Pretending to like a present",
+        "Catching a cold",
+        "Missing the bus",
+        "Playing air guitar",
+        "Taking a selfie",
+        "Walking on hot sand",
+        "Eating a sour sweet",
+        "Dropping your phone"
       ];
-      const person = people[Math.floor(Math.random()*people.length)];
+      const used = (latestRoom && latestRoom.charades && Array.isArray(latestRoom.charades.used)) ? latestRoom.charades.used : [];
+      let available = people.filter(p => !used.includes(p));
+      if (!available.length) { await resetCharadesPool(roomId); available = people.slice(); }
+      const person = available[Math.floor(Math.random()*available.length)];
       try {
         await startCharades(roomId, team, person, seconds);
       } catch (e) {
@@ -392,28 +466,71 @@
       "Fairytale of New York — The Pogues",
       "Merry Xmas Everybody — Slade",
       "Driving Home for Christmas — Chris Rea",
-      "Jingle Bells — Traditional",
-      "Santa Tell Me — Ariana Grande",
+      "Jingle Bell Rock — Bobby Helms",
       "Rockin’ Around the Christmas Tree — Brenda Lee",
+      "Santa Tell Me — Ariana Grande",
+      "Do They Know It’s Christmas? — Band Aid",
+      "Step Into Christmas — Elton John",
+      "Stay Another Day — East 17",
+      "Wonderful Christmastime — Paul McCartney",
+      "Let It Snow! Let It Snow! Let It Snow! — Dean Martin",
+      "It’s Beginning to Look a Lot Like Christmas — Michael Bublé",
+      "White Christmas — Bing Crosby",
+      "Sleigh Ride — The Ronettes",
+      "Feliz Navidad — José Feliciano",
+      "Underneath the Tree — Kelly Clarkson",
+      "Christmas (Baby Please Come Home) — Darlene Love",
+      "I Wish It Could Be Christmas Everyday — Wizzard",
+      "Band Aid 20 — Do They Know It’s Christmas?",
+      "Auld Lang Syne — Traditional",
+      "Don’t Stop Believin’ — Journey",
+      "Billie Jean — Michael Jackson",
+      "Dancing Queen — ABBA",
       "Mr Brightside — The Killers",
       "Wonderwall — Oasis",
-      "Bohemian Rhapsody — Queen",
       "Sweet Caroline — Neil Diamond",
+      "Bohemian Rhapsody — Queen",
+      "Smells Like Teen Spirit — Nirvana",
       "Seven Nation Army — The White Stripes",
-      "Billie Jean — Michael Jackson",
-      "Dancing Queen — ABBA"
+      "Uptown Funk — Mark Ronson ft. Bruno Mars",
+      "Happy — Pharrell Williams",
+      "Shape of You — Ed Sheeran",
+      "Bad Guy — Billie Eilish",
+      "Rolling in the Deep — Adele",
+      "Someone Like You — Adele",
+      "Take On Me — a-ha",
+      "Africa — Toto",
+      "Livin’ on a Prayer — Bon Jovi",
+      "Superstition — Stevie Wonder",
+      "Poker Face — Lady Gaga",
+      "Hips Don’t Lie — Shakira",
+      "Can’t Stop the Feeling! — Justin Timberlake",
+      "Firework — Katy Perry",
+      "Teenage Dream — Katy Perry",
+      "Fix You — Coldplay",
+      "Viva La Vida — Coldplay",
+      "Blinding Lights — The Weeknd",
+      "Uptown Girl — Billy Joel",
+      "I’m Still Standing — Elton John",
+      "Hey Jude — The Beatles",
+      "Sweet Child O’ Mine — Guns N’ Roses"
     ];
 
     $("startHumBtn").onclick = async () => {
       if (!roomId) return;
       const team = $("hummerTeam").value;
       const seconds = Number($("humSeconds").value || 60);
-      const song = HUM_SONGS[Math.floor(Math.random()*HUM_SONGS.length)];
+      const used = (latestRoom && latestRoom.hum && Array.isArray(latestRoom.hum.used)) ? latestRoom.hum.used : [];
+      let available = HUM_SONGS.filter(s => !used.includes(s));
+      if (!available.length) { await resetHumPool(roomId); available = HUM_SONGS.slice(); }
+      const song = available[Math.floor(Math.random()*available.length)];
       await startHum(roomId, team, song, seconds);
     };
 
     $("stopHumBtn").onclick = async () => { if (roomId) await stopHum(roomId); };
-    $("revealHumBtn").onclick = async () => { if (roomId) await revealHum(roomId); };
+    $("revealHum,
+      resetHumPoolBtn").onclick = async () => { if (roomId) await revealHum,
+      resetHumPool(roomId); };
 
     $("humAwardMinus1").onclick = async () => { if (roomId) await awardToHumSelectedTeam(-1); };
     $("humAwardPlus1").onclick = async () => { if (roomId) await awardToHumSelectedTeam(1); };
