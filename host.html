@@ -222,14 +222,10 @@
       // These selects exist across the 3 host sections (Buzzer / Charades / Hum)
       bindSelect("awardTeam");      // general points award
       bindSelect("actorTeam");      // charades actor team picker
+      bindSelect("hummerTeam");     // hummer team picker
       bindSelect("humAwardTeam");   // hum points award team picker
     };
 
-      bindSelect("actorTeam");
-      bindSelect("awardTeam");
-      bindSelect("hummerTeam");
-      bindSelect("humAwardTeam");
-    }
 
     function renderScores(scores){
       const body = $("scoresBody");
