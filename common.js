@@ -114,17 +114,15 @@ export async function resetBuzz(roomId) {
  */
 export async function buzz(roomId, teamName) {
   const ref = roomRef(roomId);
-  await runTransaction,
-  arrayUnion(db, async (tx) => {
+  await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("Room missing");
 
-    const data = snap.data();
+    const data = snap.data() || {};
     if (data?.buzz?.lockedBy) return; // already locked
 
     tx.update(ref, {
-      "buzz.lockedBy": teamName,
-      "buzz.lockedAt": Date.now()
+      buzz: { lockedBy: teamName, lockedAt: Date.now() }
     });
   });
 }
@@ -135,8 +133,7 @@ export async function buzz(roomId, teamName) {
 export async function registerTeam(roomId, teamName) {
   const ref = roomRef(roomId);
 
-  await runTransaction,
-  arrayUnion(db, async (tx) => {
+  await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("Room missing");
 
@@ -157,8 +154,7 @@ export async function registerTeam(roomId, teamName) {
 export async function changeScore(roomId, teamName, delta) {
   const ref = roomRef(roomId);
 
-  await runTransaction,
-  arrayUnion(db, async (tx) => {
+  await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("Room missing");
 
