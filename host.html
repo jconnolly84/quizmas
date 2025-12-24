@@ -28,6 +28,7 @@
 <body>
   <div class="wrap">
     <h1>🎄 Quizmas – Host</h1>
+    <audio id="hostBuzzerAudio" src="buzzer.mp3" preload="auto"></audio>
 
     <div class="card">
       <div class="row">
@@ -197,6 +198,7 @@
     let unsub = null;
     let latest = null;
     const timerInts = {};
+    let lastBuzzedBy = null;
 
     function modePill(data){
       const round = data?.game?.round ?? null;
@@ -323,10 +325,34 @@
     }
 
 
+    function playHostBuzz() {
+      const a = document.getElementById("hostBuzzerAudio");
+      if (!a) return;
+      try {
+        a.currentTime = 0;
+        const p = a.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      } catch (e) {}
+    }
+
     function renderBuzzer(b){
       const lockedBy = b?.lockedBy ?? null;
+
+      // 🔊 Play buzzer ONLY when a new team locks the buzz
+      if (lockedBy && lockedBy !== lastBuzzedBy) {
+        playHostBuzz();
+        lastBuzzedBy = lockedBy;
+      }
+
+      // Reset tracking when buzz is cleared
+      if (!lockedBy) {
+        lastBuzzedBy = null;
+      }
+
       $("winner").textContent = lockedBy || "—";
-      $("awardHint").textContent = lockedBy ? `Award points to: ${lockedBy}` : "Award points to: (no buzz yet)";
+      $("awardHint").textContent = lockedBy
+        ? `Award points to: ${lockedBy}`
+        : "Award points to: (no buzz yet)";
     }
 
     async function awardToSelectedTeam(delta){
@@ -342,6 +368,27 @@
       await changeScore(roomId, team, delta);
     }
 
+
+    // Prime audio on first user gesture (iOS/Safari policies)
+    document.addEventListener("pointerdown", () => {
+      const a = document.getElementById("hostBuzzerAudio");
+      if (!a) return;
+      try {
+        a.muted = true;
+        const p = a.play();
+        if (p && typeof p.then === "function") {
+          p.then(() => {
+            a.pause();
+            a.currentTime = 0;
+            a.muted = false;
+          }).catch(() => {
+            a.pause();
+            a.currentTime = 0;
+            a.muted = false;
+          });
+        }
+      } catch (e) {}
+    }, { once: true });
 
     $("open").onclick = async () => {
       roomId = $("room").value.trim();
